@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <!-- Top Layer: Teal Isometric Diamond -->
+  <polygon points="120,8 230,68 120,128 10,68" fill="#189B9B" />
+  
+  <!-- Middle Layer: Lime Green Isometric Chevron -->
+  <polygon points="10,122 120,182 230,122 195,103 120,144 45,103" fill="#81B825" />
+  
+  <!-- Bottom Layer: Navy Blue Isometric Chevron -->
+  <polygon points="10,176 120,236 230,176 195,157 120,198 45,157" fill="#071E5D" />
+</svg>
