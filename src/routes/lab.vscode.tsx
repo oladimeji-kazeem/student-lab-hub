@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { AppShell, Button } from "@/components/ui-kit";
 import { Gate } from "@/components/CodeLab";
@@ -31,6 +31,25 @@ function VSCode() {
   const [files, setFiles] = useState(initial);
   const [open, setOpen] = useState("analysis.py");
   const [newName, setNewName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleUploadWorkspaceFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const nextFiles = { ...files };
+    let lastUploaded = open;
+    for (let i = 0; i < fileList.length; i++) {
+      const f = fileList[i];
+      if (!f) continue;
+      const content = await f.text();
+      nextFiles[f.name] = content;
+      lastUploaded = f.name;
+    }
+    setFiles(nextFiles);
+    setOpen(lastUploaded);
+    toast.success(`Uploaded ${fileList.length} ${fileList.length === 1 ? "file" : "files"} into workspace`);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const currentContent = files[open] ?? "";
   const isPython = open.endsWith(".py");
@@ -60,6 +79,21 @@ function VSCode() {
             Lightweight workspace with file downloads — or launch the full VS Code for the Web.
           </p>
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".py,.R,.r,.ipynb,.csv,.json,.md,.txt"
+              onChange={handleUploadWorkspaceFiles}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              className="py-1 px-3 text-xs border-lime/60 bg-lime/10 text-primary font-semibold hover:bg-lime/20"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              📂 Upload Local Files
+            </Button>
             <span className="text-xs font-medium text-muted-foreground mr-1">Download:</span>
             <Button variant="outline" className="py-1 px-3 text-xs" onClick={handleDownloadActive}>
               📥 {open}

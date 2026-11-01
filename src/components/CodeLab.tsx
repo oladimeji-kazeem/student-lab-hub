@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppShell, Button, Card } from "@/components/ui-kit";
@@ -10,6 +10,7 @@ import {
   downloadAsIpynb,
   downloadRWorkspace,
   downloadFile,
+  parseUploadedNotebookOrScript,
 } from "@/lib/code-export";
 import { LAB_TEMPLATES } from "@/lib/ml-templates";
 
@@ -342,8 +343,20 @@ export function CodeLab({
   starter: string;
 }) {
   const envTemplates = LAB_TEMPLATES.filter((t) => t.kernel === env);
+  const storageKey = `elab-codelab-draft-${env}-v1`;
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [code, setCode] = useState(starter);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [code, setCode] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved && saved.trim()) return saved;
+      } catch {
+        // ignore storage errors
+      }
+    }
+    return starter;
+  });
   const [out, setOut] = useState("");
   const [plots, setPlots] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -351,6 +364,16 @@ export function CodeLab({
   const [wasmStage, setWasmStage] = useState<string>("");
   const [wasmPercent, setWasmPercent] = useState<number>(0);
   const [isDownloadingWasm, setIsDownloadingWasm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(storageKey, code);
+    } catch {
+      // ignore storage errors
+    }
+  }, [code, storageKey]);
 
   // micropip package installer state
   const [pkgInput, setPkgInput] = useState("");
@@ -423,12 +446,36 @@ export function CodeLab({
 
   const handleSelectTemplate = (templateId: string) => {
     setSelectedTemplateId(templateId);
+    setUploadedFileName("");
     const found = envTemplates.find((t) => t.id === templateId);
     if (found) {
       setCode(found.script);
       setOut("");
       setPlots([]);
       toast.info(`Loaded template: ${found.name}`);
+    }
+  };
+
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const raw = await file.text();
+      const parsed = parseUploadedNotebookOrScript(file.name, raw, env);
+      setCode(parsed.script);
+      setUploadedFileName(parsed.fileName);
+      setSelectedTemplateId("");
+      const allOutputs = parsed.cells.flatMap((c) => c.outputs ?? []);
+      const allPlots = parsed.cells.flatMap((c) => c.plots ?? []);
+      setOut(allOutputs.join("\n"));
+      setPlots(allPlots);
+      toast.success(`Uploaded "${file.name}" into ${title}`);
+    } catch (err) {
+      toast.error(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -550,6 +597,25 @@ export function CodeLab({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {uploadedFileName && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-teal/15 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-teal">
+                  📄 {uploadedFileName}
+                </span>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={env === "python" ? ".py,.ipynb" : ".R,.r,.RData,.rda,.ipynb"}
+                onChange={handleUploadFile}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                className="py-1 px-3 text-xs border-lime/60 bg-lime/10 text-primary font-semibold hover:bg-lime/20"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                📂 Upload {env === "python" ? ".py / .ipynb" : ".R / .ipynb"}
+              </Button>
               <span className="text-xs font-medium text-muted-foreground mr-1">Download:</span>
               {env === "python" ? (
                 <>

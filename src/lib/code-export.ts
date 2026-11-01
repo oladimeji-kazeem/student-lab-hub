@@ -19,7 +19,7 @@ export function downloadFile(
   if (content instanceof Blob) {
     blob = content;
   } else if (content instanceof Uint8Array) {
-    blob = new Blob([content], { type: mimeType });
+    blob = new Blob([content as unknown as BlobPart], { type: mimeType });
   } else {
     blob = new Blob([content], { type: mimeType });
   }
@@ -238,3 +238,186 @@ export async function downloadRWorkspace(
   downloadFile(name, content, "application/octet-stream");
   return { success: true, message: "Exported workspace file." };
 }
+
+export interface ParsedUploadResult {
+  kernel: "python" | "r";
+  cells: NotebookCellExport[];
+  script: string;
+  fileName: string;
+}
+
+/**
+ * Parses an uploaded .ipynb, .py, .R, .r, or .RData/.rda text file from a user's computer
+ * into both Notebook cells (with preserved outputs & base64 PNG plots) and combined script text.
+ */
+export function parseUploadedNotebookOrScript(
+  fileName: string,
+  rawContent: string,
+  fallbackKernel: "python" | "r" = "python",
+): ParsedUploadResult {
+  const lower = fileName.toLowerCase();
+
+  // 1. Jupyter Notebook (.ipynb)
+  if (lower.endsWith(".ipynb")) {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      throw new Error("Invalid .ipynb file: could not parse JSON structure.");
+    }
+
+    const langName = String(
+      parsed?.metadata?.kernelspec?.language ||
+        parsed?.metadata?.language_info?.name ||
+        parsed?.metadata?.kernelspec?.name ||
+        "",
+    ).toLowerCase();
+
+    const detectedKernel: "python" | "r" =
+      langName === "r" || langName === "ir"
+        ? "r"
+        : langName.includes("python")
+          ? "python"
+          : fallbackKernel;
+
+    const rawCells: any[] = Array.isArray(parsed?.cells) ? parsed.cells : [];
+    const cells: NotebookCellExport[] = rawCells
+      .filter((c) => c && (c.cell_type === "code" || c.cell_type === "markdown" || c.cell_type === "raw"))
+      .map((c, idx) => {
+        const sourceText = Array.isArray(c.source)
+          ? c.source.join("")
+          : typeof c.source === "string"
+            ? c.source
+            : "";
+
+        if (c.cell_type !== "code") {
+          return {
+            id: `up-md-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+            type: "markdown" as const,
+            content: sourceText,
+          };
+        }
+
+        const outputs: string[] = [];
+        const plots: string[] = [];
+
+        if (Array.isArray(c.outputs)) {
+          for (const out of c.outputs) {
+            // Stream output (stdout / stderr)
+            if (out?.output_type === "stream" && out.text) {
+              const t = Array.isArray(out.text) ? out.text.join("") : String(out.text);
+              if (t.trim()) outputs.push(t.replace(/\n$/, ""));
+            }
+            // Execute result text
+            if (
+              (out?.output_type === "execute_result" || out?.output_type === "display_data") &&
+              out?.data
+            ) {
+              if (out.data["image/png"]) {
+                const rawPng = Array.isArray(out.data["image/png"])
+                  ? out.data["image/png"].join("")
+                  : String(out.data["image/png"]);
+                const cleanB64 = rawPng.trim().replace(/^data:image\/png;base64,/, "");
+                plots.push(`data:image/png;base64,${cleanB64}`);
+              } else if (out.data["text/plain"]) {
+                const txt = Array.isArray(out.data["text/plain"])
+                  ? out.data["text/plain"].join("")
+                  : String(out.data["text/plain"]);
+                if (txt.trim() && txt.trim() !== "<Figure>") outputs.push(txt);
+              }
+            }
+            // Error traceback
+            if (out?.output_type === "error") {
+              const errMsg = `${out.ename || "Error"}: ${out.evalue || ""}`;
+              outputs.push(errMsg);
+            }
+          }
+        }
+
+        return {
+          id: `up-code-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "code" as const,
+          content: sourceText,
+          outputs,
+          plots,
+          executionCount: typeof c.execution_count === "number" ? c.execution_count : null,
+        };
+      });
+
+    if (cells.length === 0) {
+      cells.push({
+        id: `up-empty-${Math.random().toString(36).slice(2, 6)}`,
+        type: "code",
+        content: "",
+        outputs: [],
+        plots: [],
+      });
+    }
+
+    const script = cells
+      .map((c) =>
+        c.type === "markdown"
+          ? c.content
+              .split("\n")
+              .map((l) => `# ${l}`)
+              .join("\n")
+          : c.content,
+      )
+      .join("\n\n");
+
+    return {
+      kernel: detectedKernel,
+      cells,
+      script,
+      fileName,
+    };
+  }
+
+  // 2. Python (.py) or R (.R / .r / .RData / .rda) script file
+  const isRFile =
+    lower.endsWith(".r") || lower.endsWith(".rdata") || lower.endsWith(".rda");
+  const detectedKernel: "python" | "r" = isRFile
+    ? "r"
+    : lower.endsWith(".py")
+      ? "python"
+      : fallbackKernel;
+
+  // Check if script has cell markers (# In[1]:, # Cell [1]:, or # %%)
+  const markerRegex = /^#\s*(?:In\[\d*\]|Cell\s*\[\d*\]|%%).*$/m;
+  let cells: NotebookCellExport[] = [];
+
+  if (markerRegex.test(rawContent)) {
+    const blocks = rawContent
+      .split(/^#\s*(?:In\[\d*\]|Cell\s*\[\d*\]|%%).*$/m)
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    cells = blocks.map((block, idx) => ({
+      id: `up-cell-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      type: "code" as const,
+      content: block,
+      outputs: [],
+      plots: [],
+      executionCount: idx + 1,
+    }));
+  } else {
+    cells = [
+      {
+        id: `up-script-${Math.random().toString(36).slice(2, 6)}`,
+        type: "code",
+        content: rawContent,
+        outputs: [],
+        plots: [],
+        executionCount: null,
+      },
+    ];
+  }
+
+  return {
+    kernel: detectedKernel,
+    cells,
+    script: rawContent,
+    fileName,
+  };
+}
+

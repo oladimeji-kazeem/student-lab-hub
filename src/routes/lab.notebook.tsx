@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell, Button } from "@/components/ui-kit";
 import {
@@ -18,6 +18,7 @@ import {
   downloadAsPython,
   downloadAsR,
   downloadRWorkspace,
+  parseUploadedNotebookOrScript,
   type NotebookCellExport,
 } from "@/lib/code-export";
 import { LAB_TEMPLATES } from "@/lib/ml-templates";
@@ -76,21 +77,68 @@ function cloneTemplateCells(templateId: string): Cell[] {
   }));
 }
 
+const NOTEBOOK_STORAGE_KEY = "elab-notebook-draft-v1";
+
 function NotebookLab() {
   const search = Route.useSearch();
   const initialKernel = search.kernel ?? "python";
   const initialTemplateId =
     initialKernel === "python" ? "py-data-science" : "r-stats-regression";
 
-  const [kernel, setKernel] = useState<"python" | "r">(initialKernel);
+  const [kernel, setKernel] = useState<"python" | "r">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(NOTEBOOK_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.kernel === "python" || parsed?.kernel === "r") {
+            return parsed.kernel;
+          }
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+    return initialKernel;
+  });
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId);
-  const [cells, setCells] = useState<Cell[]>(() => cloneTemplateCells(initialTemplateId));
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [cells, setCells] = useState<Cell[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(NOTEBOOK_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed?.cells) && parsed.cells.length > 0) {
+            return parsed.cells;
+          }
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+    return cloneTemplateCells(initialTemplateId);
+  });
   const [runningAll, setRunningAll] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [wasmStage, setWasmStage] = useState("");
   const [wasmPercent, setWasmPercent] = useState(0);
   const [isDownloadingWasm, setIsDownloadingWasm] = useState(false);
   const nextExecCount = useRef(Math.max(1, ...cells.map((c) => c.executionCount ?? 0)) + 1);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Persist notebook draft locally for offline/online continuity
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        NOTEBOOK_STORAGE_KEY,
+        JSON.stringify({ kernel, cells, uploadedFileName }),
+      );
+    } catch {
+      // ignore quota errors
+    }
+  }, [kernel, cells, uploadedFileName]);
 
   // micropip package installer state
   const [pkgInput, setPkgInput] = useState("");
@@ -103,6 +151,7 @@ function NotebookLab() {
     const defaultTmpl = newKernel === "python" ? "py-data-science" : "r-stats-regression";
     setKernel(newKernel);
     setSelectedTemplateId(defaultTmpl);
+    setUploadedFileName("");
     setCells(cloneTemplateCells(defaultTmpl));
     nextExecCount.current = 3;
     toast.info(`Switched kernel to ${newKernel === "python" ? "Python 3" : "R 4.3"}`);
@@ -115,9 +164,44 @@ function NotebookLab() {
       setKernel(tmpl.kernel);
     }
     setSelectedTemplateId(templateId);
+    setUploadedFileName("");
     setCells(cloneTemplateCells(templateId));
     nextExecCount.current = 1;
     toast.success(`Loaded notebook template: ${tmpl.name}`);
+  };
+
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = parseUploadedNotebookOrScript(file.name, text, kernel);
+      setKernel(parsed.kernel);
+      setUploadedFileName(parsed.fileName);
+      setCells(
+        parsed.cells.map((c) => ({
+          ...c,
+          outputs: c.outputs ?? [],
+          plots: c.plots ?? [],
+          isEditingMd: false,
+          status:
+            (c.outputs && c.outputs.length > 0) || (c.plots && c.plots.length > 0)
+              ? "success"
+              : "idle",
+        })),
+      );
+      nextExecCount.current =
+        Math.max(0, ...parsed.cells.map((c) => c.executionCount ?? 0)) + 1;
+      toast.success(
+        `Imported "${file.name}" (${parsed.cells.length} ${parsed.cells.length === 1 ? "cell" : "cells"}, ${parsed.kernel === "python" ? "Python" : "R"} kernel)`,
+      );
+    } catch (err) {
+      toast.error(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleInstallPkg = async (pkgName?: string) => {
@@ -478,14 +562,39 @@ function NotebookLab() {
             </div>
           )}
 
-          {/* Download & Export Ribbon */}
+          {/* Offline / Online Continuity: Upload & Export Ribbon */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span className="font-semibold text-primary">Export Options:</span>
-              <span>Download your notebook (including embedded plots) in any supported format.</span>
+            <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-primary">Offline ↔ Online Continuity:</span>
+              <span>
+                Upload a local <code className="font-mono text-primary">.ipynb</code>,{" "}
+                <code className="font-mono text-primary">.py</code>, or{" "}
+                <code className="font-mono text-primary">.R</code> file to continue your work, or download to work offline.
+              </span>
+              {uploadedFileName && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-teal/15 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-teal">
+                  📄 {uploadedFileName}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {/* Hidden File Input for Notebook / Script Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".ipynb,.py,.R,.r,.RData,.rda"
+                onChange={handleUploadFile}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                className="py-1 px-3 text-xs border-lime/60 bg-lime/10 text-primary font-semibold hover:bg-lime/20"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                📂 Upload .ipynb / .py / .R
+              </Button>
+
               <Button
                 variant="outline"
                 className="py-1 px-3 text-xs border-teal/40 hover:bg-teal/10"
