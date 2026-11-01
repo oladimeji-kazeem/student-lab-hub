@@ -30,6 +30,7 @@ import {
 import { UserManagement } from "@/components/admin/UserManagement";
 import { WebAnalyticsModule } from "@/components/admin/WebAnalyticsModule";
 import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
+import { EmailNotificationsModule } from "@/components/admin/EmailNotificationsModule";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -57,6 +58,7 @@ const tabs = [
   "Catalog",
   "Payments",
   "Plans",
+  "Emails",
   "Activity",
   "Settings",
 ] as const;
@@ -118,7 +120,9 @@ function Admin() {
                   ? "📊 " + t
                   : t === "Catalog"
                     ? "🏛 " + t
-                    : t}
+                    : t === "Emails"
+                      ? "✉️ " + t
+                      : t}
             {t === "Users" && (
               <span className="ml-1.5 rounded-full bg-teal/20 px-1.5 py-0.5 text-xs text-teal font-bold">
                 {users.length}
@@ -140,6 +144,7 @@ function Admin() {
       {tab === "Catalog" && <CatalogManager />}
       {tab === "Payments" && <Payments />}
       {tab === "Plans" && <Plans />}
+      {tab === "Emails" && <EmailNotificationsModule />}
       {tab === "Activity" && <Activity />}
       {tab === "Settings" && <Settings />}
 

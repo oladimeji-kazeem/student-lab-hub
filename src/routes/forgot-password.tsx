@@ -119,16 +119,22 @@ function ForgotPasswordPage() {
               Resetting password for <strong>{targetName || email}</strong>.
             </p>
 
-            {expectedCode && (
-              <div className="mt-4 rounded-xl bg-teal/10 border border-teal/30 p-3 text-xs text-teal space-y-1">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span>🔑</span> Verification Code Generated:
-                </div>
-                <div className="font-mono text-base font-extrabold tracking-widest text-primary">
-                  {expectedCode}
-                </div>
+            <div className="mt-4 rounded-xl bg-teal/10 border border-teal/30 p-3 text-xs text-teal space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <span>📧</span> Verification Email Dispatched:
               </div>
-            )}
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                A customized password reset email has been sent to <strong>{email}</strong>. Please check your inbox or spam folder.
+              </p>
+              {expectedCode && (
+                <div className="pt-1 border-t border-teal/20 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-teal">Dev / Quick Code:</span>
+                  <span className="font-mono text-sm font-extrabold tracking-widest text-primary">
+                    {expectedCode}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {err && (
               <div className="mt-4 rounded-xl bg-destructive/15 border border-destructive/30 p-3 text-xs text-destructive flex items-start gap-2">

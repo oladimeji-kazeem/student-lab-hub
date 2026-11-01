@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
 import {
+  triggerWelcomeEmail,
+  triggerPasswordResetEmail,
+  triggerPaymentSubmittedEmail,
+  triggerPaymentApprovedEmail,
+} from "./email-service";
+import {
   syncUserToSupabase,
   syncPaymentToSupabase,
   upsertInstitution,
@@ -1074,6 +1080,11 @@ export const actions = {
       accessUntil: u.accessUntil,
     }).catch(() => {});
 
+    // Scenario 1: Trigger customized welcome email to registered address
+    triggerWelcomeEmail(u).catch((err) => {
+      console.warn("Welcome email notice:", err);
+    });
+
     return u;
   },
 
@@ -1112,6 +1123,24 @@ export const actions = {
       note: newPayment.note,
       status: newPayment.status,
     }).catch(() => {});
+
+    // Scenario 3: When payment form is submitted, send email to info@ai-gardia.com copying olakazeem@gmail.com and the user email
+    const currentUser = getState().users.find((u) => u.id === userId);
+    const selectedPlan = getState().plans.find((pl) => pl.id === p.plan);
+    triggerPaymentSubmittedEmail(
+      {
+        reference: newPayment.reference,
+        amount: newPayment.amount,
+        bank: newPayment.bank,
+        paidOn: newPayment.paidOn,
+        payerName: newPayment.payerName,
+        planName: selectedPlan?.name || newPayment.plan,
+        note: newPayment.note,
+      },
+      currentUser,
+    ).catch((err) => {
+      console.warn("Payment submitted email notice:", err);
+    });
   },
 
   reviewPayment(id: string, approve: boolean, adminNote?: string) {
@@ -1166,6 +1195,19 @@ export const actions = {
             envs: updatedUser.envs,
             accessUntil: updatedUser.accessUntil,
           }).catch(() => {});
+
+          // Scenario 4: When approval has been granted after receiving payment details,
+          // the user should receive an email stating approval has been granted and they can now work on the platform.
+          if (plan) {
+            triggerPaymentApprovedEmail(
+              { name: updatedUser.name, email: updatedUser.email },
+              { name: plan.name, days: plan.days, envs: plan.envs },
+              { reference: p.reference, amount: p.amount, paidOn: p.paidOn },
+              updatedUser.accessUntil || new Date(Date.now() + plan.days * 864e5).toISOString(),
+            ).catch((err) => {
+              console.warn("Payment approval email notice:", err);
+            });
+          }
         }
       }
 
@@ -1332,6 +1374,12 @@ export const actions = {
     }
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     set((st) => log(st, `Password reset code requested for ${u.name} (${u.email})`));
+
+    // Scenario 2: Prepare customized password reset email to the user
+    triggerPasswordResetEmail(u, code).catch((err) => {
+      console.warn("Password reset email notice:", err);
+    });
+
     return {
       code,
       name: u.name,

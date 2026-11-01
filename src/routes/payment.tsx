@@ -162,8 +162,13 @@ function PaymentPage() {
           </div>
 
           {done && (
-            <div className="mt-3 rounded-lg border border-success/30 bg-success/15 p-3.5 text-sm text-success">
-              ✓ Payment logged successfully! An administrator will review your transfer and activate your lab access shortly.
+            <div className="mt-3 rounded-lg border border-success/30 bg-success/15 p-3.5 text-sm text-success space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <span>✓</span> Payment Logged & Email Dispatched!
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                An automatic notification has been routed to <strong>info@ai-gardia.com</strong> (copied to <strong>olakazeem@gmail.com</strong> and <strong>{user?.email}</strong>). An administrator will review your transfer and activate your lab access shortly.
+              </p>
             </div>
           )}
 
