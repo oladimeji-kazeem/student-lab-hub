@@ -22,6 +22,7 @@ import {
   type NotebookCellExport,
 } from "@/lib/code-export";
 import { LAB_TEMPLATES } from "@/lib/ml-templates";
+import { LabPracticePanel } from "@/components/LabPracticePanel";
 
 export const Route = createFileRoute("/lab/notebook")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -641,6 +642,48 @@ function NotebookLab() {
             </div>
           </div>
         </div>
+
+        {/* Course Lab Practical Assessment & Auto-Grading Panel */}
+        <LabPracticePanel
+          kernel={kernel}
+          currentCode={cells
+            .filter((c) => c.type === "code")
+            .map((c) => c.content)
+            .join("\n\n")}
+          currentOutput={cells
+            .filter((c) => c.type === "code")
+            .flatMap((c) => c.outputs ?? [])
+            .join("\n")}
+          currentPlots={cells
+            .filter((c) => c.type === "code")
+            .flatMap((c) => c.plots ?? [])}
+          onLoadStarter={(asg) => {
+            if (asg.kernel !== kernel) {
+              setKernel(asg.kernel);
+            }
+            setCells([
+              {
+                id: `asg-md-${asg.id}`,
+                type: "markdown",
+                content: `# [${asg.courseCode}] ${asg.title}\n**Instructions:** ${asg.instructions}`,
+                isEditingMd: false,
+                status: "idle",
+                outputs: [],
+                plots: [],
+              },
+              {
+                id: `asg-code-${asg.id}`,
+                type: "code",
+                content: asg.starterCode,
+                isEditingMd: false,
+                status: "idle",
+                outputs: [],
+                plots: [],
+                executionCount: null,
+              },
+            ]);
+          }}
+        />
 
         {/* Live WASM Asset Download Progress Bar in Notebook */}
         {isDownloadingWasm && (

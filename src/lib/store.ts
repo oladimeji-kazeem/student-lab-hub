@@ -12,6 +12,19 @@ import {
   deleteState as deleteStateFromSupabase,
   upsertOrganization,
   deleteOrganization as deleteOrganizationFromSupabase,
+  syncAssignmentToSupabase,
+  syncSubmissionToSupabase,
+  getInstitutions,
+  getDepartments,
+  getCourses,
+  getStates,
+  getOrganizations,
+  getPlans,
+  getPortalSettings,
+  getAssignments,
+  getSubmissions,
+  getUsersFromSupabase,
+  getPaymentsFromSupabase,
 } from "./supabase";
 import {
   NIGERIAN_INSTITUTIONS,
@@ -108,6 +121,116 @@ export interface AccessLog {
   timestamp: string;
 }
 
+export interface LabAssignment {
+  id: string;
+  title: string;
+  courseCode: string;
+  institution: string;
+  department: string;
+  kernel: "python" | "r";
+  instructions: string;
+  starterCode: string;
+  expectedKeywords: string[];
+  expectPlot?: boolean | undefined;
+  maxScore: number;
+  dueDate: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface LabSubmission {
+  id: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  institution?: string | undefined;
+  department?: string | undefined;
+  kernel: "python" | "r";
+  code: string;
+  output: string;
+  plots: string[];
+  autoScore: number;
+  autoChecksPassed: string[];
+  autoChecksFailed: string[];
+  finalScore: number;
+  maxScore: number;
+  status: "submitted" | "graded";
+  feedback?: string | undefined;
+  gradedBy?: string | undefined;
+  submittedAt: string;
+  gradedAt?: string | undefined;
+}
+
+export function evaluateAutoGrade(
+  assignment: LabAssignment,
+  code: string,
+  output: string,
+  plots: string[] = [],
+): { autoScore: number; passed: string[]; failed: string[] } {
+  const passed: string[] = [];
+  const failed: string[] = [];
+  const max = assignment.maxScore || 100;
+
+  const cleanCode = code.trim();
+  const cleanOut = output.trim();
+  const hasError = /\b(Traceback|SyntaxError|NameError|TypeError|ValueError|Error:)\b/i.test(
+    cleanOut,
+  );
+
+  // 1. Execution & non-error check (20% of score)
+  let score = 0;
+  const execWeight = max * 0.2;
+  if (cleanCode.length > 10 && (cleanOut.length > 0 || plots.length > 0) && !hasError) {
+    score += execWeight;
+    passed.push("Clean code execution (no runtime errors)");
+  } else {
+    failed.push(
+      hasError
+        ? "Execution check failed (runtime error in output)"
+        : "Run your code first so output is captured",
+    );
+  }
+
+  // 2. Plot requirement check (20% if required)
+  const plotWeight = assignment.expectPlot ? max * 0.2 : 0;
+  if (assignment.expectPlot) {
+    if (plots.length > 0) {
+      score += plotWeight;
+      passed.push(`Generated visual figure (${plots.length} plot${plots.length > 1 ? "s" : ""})`);
+    } else {
+      failed.push("Expected a rendered chart/plot (e.g. plt.show() or plot())");
+    }
+  }
+
+  // 3. Expected keywords / metric checks (remaining 60% or 80%)
+  const kwBudget = max - execWeight - plotWeight;
+  const keywords = assignment.expectedKeywords.filter((k) => k.trim().length > 0);
+  if (keywords.length === 0) {
+    if (cleanCode.length > 10 && !hasError) {
+      score += kwBudget;
+    }
+  } else {
+    const perKw = kwBudget / keywords.length;
+    const combined = `${cleanCode}\n${cleanOut}`.toLowerCase();
+    for (const kw of keywords) {
+      if (combined.includes(kw.toLowerCase())) {
+        score += perKw;
+        passed.push(`Verified "${kw}"`);
+      } else {
+        failed.push(`Missing expected symbol/output: "${kw}"`);
+      }
+    }
+  }
+
+  return {
+    autoScore: Math.min(max, Math.max(0, Math.round(score))),
+    passed,
+    failed,
+  };
+}
+
 interface State {
   users: User[];
   payments: Payment[];
@@ -117,6 +240,8 @@ interface State {
   courses: Course[];
   states: NigeriaState[];
   organizations: Organization[];
+  assignments: LabAssignment[];
+  submissions: LabSubmission[];
   audit: Audit[];
   settings: Settings;
   sessionId: string | null;
@@ -292,6 +417,141 @@ const seed = (): State => ({
   courses: [...COURSES_OF_STUDY],
   states: [...NIGERIAN_STATES],
   organizations: [...NIGERIAN_ORGANIZATIONS],
+  assignments: [
+    {
+      id: "asg-1",
+      title: "Practical 1: Supervised ML Classification with Random Forest",
+      courseCode: "CSC 301",
+      institution: "All Institutions",
+      department: "Computer Science",
+      kernel: "python",
+      instructions:
+        "Load the Iris dataset using scikit-learn, split into train/test sets (test_size=0.25, random_state=42), train a RandomForestClassifier, print the test Accuracy and classification_report, and plot the Feature Importances using matplotlib.",
+      starterCode: `import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# 1. Load dataset & split
+iris = load_iris()
+X_train, X_test, y_train, y_test = train_test_split(
+    iris.data, iris.target, test_size=0.25, random_state=42, stratify=iris.target
+)
+
+# 2. Fit RandomForestClassifier & print accuracy + report
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)
+preds = clf.predict(X_test)
+print(f"Accuracy: {accuracy_score(y_test, preds)*100:.2f}%")
+print(classification_report(y_test, preds, target_names=iris.target_names))
+
+# 3. Plot feature importances
+plt.figure(figsize=(6.5, 3.8))
+plt.barh(iris.feature_names, clf.feature_importances_, color="#189B9B")
+plt.title("Random Forest Feature Importances")
+plt.tight_layout()
+plt.show()
+`,
+      expectedKeywords: ["RandomForestClassifier", "accuracy", "precision", "setosa"],
+      expectPlot: true,
+      maxScore: 100,
+      dueDate: d(14).slice(0, 10),
+      createdBy: "Dr. Chioma Nnamdi",
+      createdAt: d(-5),
+    },
+    {
+      id: "asg-2",
+      title: "Practical 2: NumPy Statistical Simulation & Distribution Analysis",
+      courseCode: "CSC 202",
+      institution: "All Institutions",
+      department: "Computer Science",
+      kernel: "python",
+      instructions:
+        "Generate 1,000 normal random samples (loc=50, scale=12) using NumPy. Compute and print the Sample Mean, Standard Deviation, and Median, and plot a histogram of the distribution.",
+      starterCode: `import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+sample = np.random.normal(loc=50, scale=12, size=1000)
+
+print(f"Mean   : {np.mean(sample):.3f}")
+print(f"Std Dev: {np.std(sample):.3f}")
+print(f"Median : {np.median(sample):.3f}")
+
+plt.figure(figsize=(6.5, 3.8))
+plt.hist(sample, bins=25, color="#189B9B", edgecolor="#071E5D")
+plt.title("Normal Distribution Simulation (n=1000)")
+plt.show()
+`,
+      expectedKeywords: ["np.random.normal", "Mean", "Std", "Median"],
+      expectPlot: true,
+      maxScore: 100,
+      dueDate: d(10).slice(0, 10),
+      createdBy: "Ola Kazeem",
+      createdAt: d(-7),
+    },
+    {
+      id: "asg-3",
+      title: "Practical 3: Linear Regression & Variance Modeling in R",
+      courseCode: "STA 304",
+      institution: "All Institutions",
+      department: "Statistics & Data Analytics",
+      kernel: "r",
+      instructions:
+        "Using the built-in mtcars dataset in R, fit an ordinary least squares linear regression model (mpg ~ wt), print model coefficients and R-squared, and plot MPG vs. Weight with the regression line.",
+      starterCode: `data(mtcars)
+model <- lm(mpg ~ wt, data = mtcars)
+print(coef(model))
+cat("R-squared:", summary(model)$r.squared, "\\n")
+
+plot(mtcars$wt, mtcars$mpg, pch = 19, col = "#189B9B",
+     xlab = "Weight", ylab = "MPG", main = "OLS Regression: MPG vs Weight")
+abline(model, col = "#071E5D", lwd = 2)
+`,
+      expectedKeywords: ["lm(", "R-squared", "Intercept", "wt"],
+      expectPlot: true,
+      maxScore: 100,
+      dueDate: d(21).slice(0, 10),
+      createdBy: "Dr. Chioma Nnamdi",
+      createdAt: d(-3),
+    },
+  ],
+  submissions: [
+    {
+      id: "sub-seed-1",
+      assignmentId: "asg-1",
+      assignmentTitle: "Practical 1: Supervised ML Classification with Random Forest",
+      studentId: "u-1",
+      studentName: "Amara Okafor",
+      studentEmail: "student@e-lab.ng",
+      institution: "University of Lagos",
+      department: "Computer Science",
+      kernel: "python",
+      code: `import numpy as np\nfrom sklearn.datasets import load_iris\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.ensemble import RandomForestClassifier\nfrom sklearn.metrics import accuracy_score, classification_report\n\niris = load_iris()\nX_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size=0.25, random_state=42, stratify=iris.target)\nclf = RandomForestClassifier(n_estimators=100, random_state=42)\nclf.fit(X_train, y_train)\npreds = clf.predict(X_test)\nprint(f"Accuracy: {accuracy_score(y_test, preds)*100:.2f}%")\nprint(classification_report(y_test, preds, target_names=iris.target_names))`,
+      output:
+        "Accuracy: 92.11%\n              precision    recall  f1-score   support\n      setosa       1.00      1.00      1.00        12\n  versicolor       0.86      0.92      0.89        13\n   virginica       0.92      0.85      0.88        13\n",
+      plots: [],
+      autoScore: 80,
+      autoChecksPassed: [
+        "Clean code execution (no runtime errors)",
+        'Verified "RandomForestClassifier"',
+        'Verified "accuracy"',
+        'Verified "precision"',
+        'Verified "setosa"',
+      ],
+      autoChecksFailed: ["Expected a rendered chart/plot (e.g. plt.show() or plot())"],
+      finalScore: 88,
+      maxScore: 100,
+      status: "graded",
+      feedback:
+        "Great Random Forest implementation and stratified train/test split! Remember to include the feature importance bar chart for full 100 marks.",
+      gradedBy: "Dr. Chioma Nnamdi",
+      submittedAt: d(-2),
+      gradedAt: d(-1),
+    },
+  ],
   audit: [
     {
       id: uid(),
@@ -483,6 +743,14 @@ function load() {
           parsed.organizations && parsed.organizations.length > 0
             ? parsed.organizations
             : seed().organizations,
+        assignments:
+          parsed.assignments && parsed.assignments.length > 0
+            ? parsed.assignments
+            : seed().assignments,
+        submissions:
+          parsed.submissions && parsed.submissions.length > 0
+            ? parsed.submissions
+            : seed().submissions,
         accessLogs:
           parsed.accessLogs && parsed.accessLogs.length > 0
             ? parsed.accessLogs
@@ -524,6 +792,92 @@ function load() {
     }
   } catch {
     /* ignore */
+  }
+
+  // Asynchronously hydrate fresh data from Supabase PostgreSQL
+  if (typeof window !== "undefined") {
+    Promise.allSettled([
+      getInstitutions(),
+      getDepartments(),
+      getCourses(),
+      getStates(),
+      getOrganizations(),
+      getPlans(),
+      getPortalSettings(),
+      getAssignments(),
+      getSubmissions(),
+      getUsersFromSupabase(),
+      getPaymentsFromSupabase(),
+    ]).then(([insts, depts, crss, sts, orgs, plns, settings, asgs, subs, usrs, pymts]) => {
+      set((s) => {
+        let changed = false;
+        const next = { ...s };
+
+        if (insts.status === "fulfilled" && insts.value.length > 0) {
+          next.institutions = insts.value;
+          changed = true;
+        }
+        if (depts.status === "fulfilled" && depts.value.length > 0) {
+          next.departments = depts.value;
+          changed = true;
+        }
+        if (crss.status === "fulfilled" && crss.value.length > 0) {
+          next.courses = crss.value;
+          changed = true;
+        }
+        if (sts.status === "fulfilled" && sts.value.length > 0) {
+          next.states = sts.value;
+          changed = true;
+        }
+        if (orgs.status === "fulfilled" && orgs.value.length > 0) {
+          next.organizations = orgs.value;
+          changed = true;
+        }
+        if (plns.status === "fulfilled" && plns.value.length > 0) {
+          next.plans = plns.value;
+          changed = true;
+        }
+        if (settings.status === "fulfilled" && settings.value) {
+          next.settings = { ...next.settings, ...settings.value };
+          changed = true;
+        }
+        if (asgs.status === "fulfilled" && asgs.value.length > 0) {
+          next.assignments = asgs.value;
+          changed = true;
+        }
+        if (subs.status === "fulfilled" && subs.value.length > 0) {
+          next.submissions = subs.value;
+          changed = true;
+        }
+        if (usrs.status === "fulfilled" && usrs.value.length > 0) {
+          // Merge remote users with local passwords and sessions
+          const map = new Map<string, User>();
+          for (const u of s.users) map.set(u.id, u);
+          for (const u of usrs.value) {
+            const existing = map.get(u.id);
+            map.set(u.id, {
+              ...u,
+              password: existing?.password || u.password,
+            });
+          }
+          next.users = Array.from(map.values());
+          changed = true;
+        }
+        if (pymts.status === "fulfilled" && pymts.value.length > 0) {
+          const pMap = new Map<string, Payment>();
+          for (const p of pymts.value) pMap.set(p.id, p);
+          for (const p of s.payments) {
+            if (!pMap.has(p.id)) {
+              pMap.set(p.id, p);
+            }
+          }
+          next.payments = Array.from(pMap.values());
+          changed = true;
+        }
+
+        return changed ? next : s;
+      });
+    });
   }
 }
 
@@ -814,6 +1168,21 @@ export const actions = {
           }).catch(() => {});
         }
       }
+
+      // Sync reviewed payment status back to Supabase
+      syncPaymentToSupabase({
+        id: p.id,
+        userId: p.userId,
+        plan: p.plan,
+        amount: p.amount,
+        bank: p.bank,
+        reference: p.reference,
+        paidOn: p.paidOn,
+        payerName: p.payerName,
+        note: p.note,
+        status: approve ? "approved" : "rejected",
+      }).catch(() => {});
+
       return log(
         { ...s, payments, users },
         `${approve ? "Approved" : "Rejected"} payment ${p.reference} for ${name}`,
@@ -1351,6 +1720,132 @@ export const actions = {
     set((s) => log({ ...s, settings: st }, "Updated portal settings"));
   },
 
+  // Lab Assignment & Student Assessment Actions
+  addAssignment(
+    payload: Omit<LabAssignment, "id" | "createdAt"> & { id?: string | undefined },
+  ): LabAssignment {
+    const newAsg: LabAssignment = {
+      ...payload,
+      id: payload.id || `asg-${uid()}`,
+      createdAt: new Date().toISOString(),
+    };
+    set((s) => {
+      const updated = [newAsg, ...s.assignments];
+      syncAssignmentToSupabase(newAsg).catch(() => {});
+      return log(
+        { ...s, assignments: updated },
+        `Created lab practical: ${newAsg.courseCode} — ${newAsg.title}`,
+      );
+    });
+    return newAsg;
+  },
+
+  deleteAssignment(id: string) {
+    set((s) => {
+      const target = s.assignments.find((a) => a.id === id);
+      return log(
+        {
+          ...s,
+          assignments: s.assignments.filter((a) => a.id !== id),
+          submissions: s.submissions.filter((sub) => sub.assignmentId !== id),
+        },
+        `Deleted lab practical: ${target?.title || id}`,
+      );
+    });
+  },
+
+  submitLabPractice(payload: {
+    assignmentId: string;
+    code: string;
+    output: string;
+    plots?: string[] | undefined;
+  }): LabSubmission {
+    load();
+    const user = state.users.find((u) => u.id === state.sessionId);
+    if (!user) throw new Error("Please sign in to submit your lab practice.");
+    const assignment = state.assignments.find((a) => a.id === payload.assignmentId);
+    if (!assignment) throw new Error("Selected lab assignment was not found.");
+
+    const plots = payload.plots ?? [];
+    const { autoScore, passed, failed } = evaluateAutoGrade(
+      assignment,
+      payload.code,
+      payload.output,
+      plots,
+    );
+
+    const existing = state.submissions.find(
+      (sub) => sub.assignmentId === assignment.id && sub.studentId === user.id,
+    );
+
+    const submission: LabSubmission = {
+      id: existing ? existing.id : `sub-${uid()}`,
+      assignmentId: assignment.id,
+      assignmentTitle: `${assignment.courseCode}: ${assignment.title}`,
+      studentId: user.id,
+      studentName: user.name,
+      studentEmail: user.email,
+      institution: user.institution,
+      department: user.department,
+      kernel: assignment.kernel,
+      code: payload.code,
+      output: payload.output,
+      plots,
+      autoScore,
+      autoChecksPassed: passed,
+      autoChecksFailed: failed,
+      finalScore: autoScore,
+      maxScore: assignment.maxScore,
+      status: "submitted",
+      feedback: existing?.feedback,
+      gradedBy: existing?.gradedBy,
+      submittedAt: new Date().toISOString(),
+      gradedAt: existing?.gradedAt,
+    };
+
+    set((s) => {
+      const others = s.submissions.filter((item) => item.id !== submission.id);
+      syncSubmissionToSupabase(submission).catch(() => {});
+      return log(
+        { ...s, submissions: [submission, ...others] },
+        `Submitted lab practice for ${assignment.courseCode} (Auto-score: ${autoScore}/${assignment.maxScore})`,
+      );
+    });
+
+    return submission;
+  },
+
+  gradeLabSubmission(
+    submissionId: string,
+    finalScore: number,
+    feedback: string,
+    graderName?: string,
+  ) {
+    set((s) => {
+      const actor =
+        graderName || s.users.find((u) => u.id === s.sessionId)?.name || "Lecturer / Admin";
+      const updated = s.submissions.map((sub) => {
+        if (sub.id !== submissionId) return sub;
+        const clamped = Math.min(sub.maxScore, Math.max(0, Math.round(finalScore)));
+        const nextSub: LabSubmission = {
+          ...sub,
+          finalScore: clamped,
+          feedback: feedback.trim(),
+          status: "graded",
+          gradedBy: actor,
+          gradedAt: new Date().toISOString(),
+        };
+        syncSubmissionToSupabase(nextSub).catch(() => {});
+        return nextSub;
+      });
+      const target = updated.find((u) => u.id === submissionId);
+      return log(
+        { ...s, submissions: updated },
+        `Graded ${target?.studentName || "student"}'s lab submission (${finalScore}/${target?.maxScore ?? 100})`,
+      );
+    });
+  },
+
   countRun(stateName = "Lagos") {
     set((s) => ({
       ...s,
@@ -1399,6 +1894,97 @@ export const actions = {
           ]
         : s.accessLogs,
     }));
+  },
+
+  async refreshFromSupabase() {
+    try {
+      const [insts, depts, crss, sts, orgs, plns, settings, asgs, subs, usrs, pymts] =
+        await Promise.allSettled([
+          getInstitutions(),
+          getDepartments(),
+          getCourses(),
+          getStates(),
+          getOrganizations(),
+          getPlans(),
+          getPortalSettings(),
+          getAssignments(),
+          getSubmissions(),
+          getUsersFromSupabase(),
+          getPaymentsFromSupabase(),
+        ]);
+
+      set((s) => {
+        let changed = false;
+        const next = { ...s };
+
+        if (insts.status === "fulfilled" && insts.value.length > 0) {
+          next.institutions = insts.value;
+          changed = true;
+        }
+        if (depts.status === "fulfilled" && depts.value.length > 0) {
+          next.departments = depts.value;
+          changed = true;
+        }
+        if (crss.status === "fulfilled" && crss.value.length > 0) {
+          next.courses = crss.value;
+          changed = true;
+        }
+        if (sts.status === "fulfilled" && sts.value.length > 0) {
+          next.states = sts.value;
+          changed = true;
+        }
+        if (orgs.status === "fulfilled" && orgs.value.length > 0) {
+          next.organizations = orgs.value;
+          changed = true;
+        }
+        if (plns.status === "fulfilled" && plns.value.length > 0) {
+          next.plans = plns.value;
+          changed = true;
+        }
+        if (settings.status === "fulfilled" && settings.value) {
+          next.settings = { ...next.settings, ...settings.value };
+          changed = true;
+        }
+        if (asgs.status === "fulfilled" && asgs.value.length > 0) {
+          next.assignments = asgs.value;
+          changed = true;
+        }
+        if (subs.status === "fulfilled" && subs.value.length > 0) {
+          next.submissions = subs.value;
+          changed = true;
+        }
+        if (usrs.status === "fulfilled" && usrs.value.length > 0) {
+          const map = new Map<string, User>();
+          for (const u of s.users) map.set(u.id, u);
+          for (const u of usrs.value) {
+            const existing = map.get(u.id);
+            map.set(u.id, {
+              ...u,
+              password: existing?.password || u.password,
+            });
+          }
+          next.users = Array.from(map.values());
+          changed = true;
+        }
+        if (pymts.status === "fulfilled" && pymts.value.length > 0) {
+          const pMap = new Map<string, Payment>();
+          for (const p of pymts.value) pMap.set(p.id, p);
+          for (const p of s.payments) {
+            if (!pMap.has(p.id)) {
+              pMap.set(p.id, p);
+            }
+          }
+          next.payments = Array.from(pMap.values());
+          changed = true;
+        }
+
+        return changed ? next : s;
+      });
+      return true;
+    } catch (err) {
+      console.warn("Manual refresh from Supabase notice:", err);
+      return false;
+    }
   },
 
   reset() {

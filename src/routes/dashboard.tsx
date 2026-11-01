@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, Card, Badge, Button } from "@/components/ui-kit";
 import { useCurrentUser, useStore, hasAccess } from "@/lib/store";
+import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard() {
   const user = useCurrentUser();
   const payments = useStore((s) => s.payments);
+  const assignments = useStore((s) => s.assignments);
+  const submissions = useStore((s) => s.submissions);
 
   if (!user)
     return (
@@ -185,6 +188,102 @@ function Dashboard() {
           );
         })}
       </div>
+
+      {/* Lecturer / Admin Assessment & Gradebook Console */}
+      {(user.accountType === "lecturer" || user.role === "admin") && (
+        <div className="mt-10 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-bold text-primary">
+                👨‍🏫 Lecturer Lab Assessment & Student Gradebook
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Create course practicals, inspect student code & auto-grader checks, award marks, and export `.csv` mark sheets.
+              </p>
+            </div>
+          </div>
+          <LabAssessmentModule />
+        </div>
+      )}
+
+      {/* Student Course Practicals & Gradebook */}
+      {user.accountType !== "lecturer" && (
+        <div className="mt-10 space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-primary">
+              🎓 Assigned Course Lab Practicals & My Grades
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Attempt your department's coding practicals in the Interactive Notebook or Python/R Lab to receive automated & lecturer grading.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {assignments.map((asg) => {
+              const mySub = submissions.find(
+                (s) => s.assignmentId === asg.id && s.studentId === user.id,
+              );
+              return (
+                <Card key={asg.id} className="flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded bg-primary px-2 py-0.5 font-mono text-xs font-bold text-primary-foreground">
+                        {asg.courseCode}
+                      </span>
+                      <span className="rounded bg-teal/15 px-2 py-0.5 font-mono text-xs font-bold text-teal uppercase">
+                        {asg.kernel}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 font-bold text-primary text-sm">{asg.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-3">
+                      {asg.instructions}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 border-t border-border pt-2.5 text-xs">
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>Max: {asg.maxScore} Marks</span>
+                      <span>Due: {asg.dueDate}</span>
+                    </div>
+
+                    {mySub ? (
+                      <div className="rounded-xl bg-success/10 border border-success/30 p-2.5 space-y-1">
+                        <div className="flex items-center justify-between font-bold text-success">
+                          <span>
+                            {mySub.status === "graded" ? "✓ Lecturer Graded" : "📤 Submitted"}
+                          </span>
+                          <span className="font-mono">
+                            {mySub.finalScore} / {mySub.maxScore}
+                          </span>
+                        </div>
+                        {mySub.feedback && (
+                          <p className="text-[11px] text-foreground leading-snug">
+                            "{mySub.feedback}"
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground italic">
+                        Not yet submitted
+                      </div>
+                    )}
+
+                    <Link
+                      to="/lab/notebook"
+                      search={{ kernel: asg.kernel }}
+                      className="block"
+                    >
+                      <Button variant="outline" className="w-full py-1.5 text-xs font-semibold">
+                        {mySub ? "Re-open in Lab →" : "Attempt Practical in Lab →"}
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

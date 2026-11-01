@@ -13,6 +13,7 @@ import {
   parseUploadedNotebookOrScript,
 } from "@/lib/code-export";
 import { LAB_TEMPLATES } from "@/lib/ml-templates";
+import { LabPracticePanel } from "@/components/LabPracticePanel";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let pyodide: Promise<any> | null = null;
@@ -726,6 +727,19 @@ export function CodeLab({
             </div>
           )}
         </div>
+
+        {/* Course Lab Practical Assessment & Auto-Grading Panel */}
+        <LabPracticePanel
+          kernel={env}
+          currentCode={code}
+          currentOutput={out}
+          currentPlots={plots}
+          onLoadStarter={(asg) => {
+            setCode(asg.starterCode);
+            setOut("");
+            setPlots([]);
+          }}
+        />
 
         {/* Live WASM Asset Download Progress Bar (When downloading over network) */}
         {isDownloadingWasm && (

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     department VARCHAR(255),
     course_of_study VARCHAR(255),
     degree_level VARCHAR(100),
-    current_role VARCHAR(255),
+    "current_role" VARCHAR(255),
     employer VARCHAR(255),
     state_of_residence VARCHAR(100),
     role VARCHAR(20) NOT NULL DEFAULT 'user', -- 'user' | 'admin'
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Safe migrations for existing users tables
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_type VARCHAR(50) DEFAULT 'student';
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS department VARCHAR(255);
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS current_role VARCHAR(255);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS "current_role" VARCHAR(255);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS employer VARCHAR(255);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS state_of_residence VARCHAR(100);
 
@@ -452,7 +452,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- SEED DATA: INITIAL USERS & SYSTEM ADMINISTRATORS
 -- ==============================================================================
 INSERT INTO public.users (
-  id, name, email, account_type, current_role, employer, state_of_residence, role, status, envs, access_until
+  id, name, email, account_type, "current_role", employer, state_of_residence, role, status, envs, access_until
 )
 VALUES 
   (
@@ -500,4 +500,60 @@ ON CONFLICT (email) DO UPDATE SET
   envs = EXCLUDED.envs,
   access_until = EXCLUDED.access_until,
   updated_at = NOW();
+
+-- ==============================================================================
+-- LAB PRACTICAL ASSIGNMENTS & STUDENT SUBMISSIONS (AUTO-GRADING & ASSESSMENT)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.lab_assignments (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  course_code TEXT NOT NULL,
+  institution TEXT NOT NULL DEFAULT 'All Institutions',
+  department TEXT NOT NULL DEFAULT 'Computer Science',
+  kernel TEXT NOT NULL DEFAULT 'python' CHECK (kernel IN ('python', 'r')),
+  instructions TEXT NOT NULL,
+  starter_code TEXT NOT NULL,
+  expected_keywords TEXT[] DEFAULT ARRAY[]::TEXT[],
+  expect_plot BOOLEAN DEFAULT FALSE,
+  max_score INTEGER NOT NULL DEFAULT 100,
+  due_date TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.lab_submissions (
+  id TEXT PRIMARY KEY,
+  assignment_id TEXT NOT NULL REFERENCES public.lab_assignments(id) ON DELETE CASCADE,
+  assignment_title TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  student_name TEXT NOT NULL,
+  student_email TEXT NOT NULL,
+  institution TEXT,
+  department TEXT,
+  kernel TEXT NOT NULL DEFAULT 'python',
+  code TEXT NOT NULL,
+  output TEXT NOT NULL DEFAULT '',
+  auto_score INTEGER NOT NULL DEFAULT 0,
+  final_score INTEGER NOT NULL DEFAULT 0,
+  max_score INTEGER NOT NULL DEFAULT 100,
+  status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'graded')),
+  feedback TEXT,
+  graded_by TEXT,
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  graded_at TIMESTAMPTZ
+);
+
+ALTER TABLE public.lab_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lab_submissions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read lab_assignments" ON public.lab_assignments;
+CREATE POLICY "Public read lab_assignments" ON public.lab_assignments FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public write lab_assignments" ON public.lab_assignments;
+CREATE POLICY "Public write lab_assignments" ON public.lab_assignments FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read lab_submissions" ON public.lab_submissions;
+CREATE POLICY "Public read lab_submissions" ON public.lab_submissions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public write lab_submissions" ON public.lab_submissions;
+CREATE POLICY "Public write lab_submissions" ON public.lab_submissions FOR ALL USING (true);
+
 

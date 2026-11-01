@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppShell, Card, Badge, Button, Input, Field } from "@/components/ui-kit";
 import {
   actions,
@@ -29,6 +29,7 @@ import {
 } from "@/components/admin/AdminAuthGate";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { WebAnalyticsModule } from "@/components/admin/WebAnalyticsModule";
+import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -51,6 +52,7 @@ export const Route = createFileRoute("/admin")({
 const tabs = [
   "Overview",
   "Users",
+  "Assessments",
   "Analytics",
   "Catalog",
   "Payments",
@@ -68,6 +70,15 @@ function Admin() {
   const users = useStore((s) => s.users);
   const currentUser = users.find((u) => u.id === sessionId) ?? null;
   const pending = useStore((s) => s.payments.filter((p) => p.status === "pending").length);
+
+  // Synchronize remote database changes on mount and poll periodically
+  useEffect(() => {
+    actions.refreshFromSupabase();
+    const interval = setInterval(() => {
+      actions.refreshFromSupabase();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 1. Authentication Gates: If unauthenticated, render dedicated Admin Login Gate
   if (!currentUser) {
@@ -101,11 +112,13 @@ function Admin() {
           >
             {t === "Users"
               ? "👥 " + t
-              : t === "Analytics"
-                ? "📊 " + t
-                : t === "Catalog"
-                  ? "🏛 " + t
-                  : t}
+              : t === "Assessments"
+                ? "🎓 " + t
+                : t === "Analytics"
+                  ? "📊 " + t
+                  : t === "Catalog"
+                    ? "🏛 " + t
+                    : t}
             {t === "Users" && (
               <span className="ml-1.5 rounded-full bg-teal/20 px-1.5 py-0.5 text-xs text-teal font-bold">
                 {users.length}
@@ -122,6 +135,7 @@ function Admin() {
 
       {tab === "Overview" && <Overview go={setTab} />}
       {tab === "Users" && <UserManagement />}
+      {tab === "Assessments" && <LabAssessmentModule />}
       {tab === "Analytics" && <WebAnalyticsModule />}
       {tab === "Catalog" && <CatalogManager />}
       {tab === "Payments" && <Payments />}
@@ -1348,43 +1362,91 @@ function Payments() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [q, setQ] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Just now");
 
-  const list = payments.filter(
-    (p) =>
-      (filter === "all" || p.status === filter) &&
-      (p.reference + p.payerName + (users.find((u) => u.id === p.userId)?.email ?? ""))
-        .toLowerCase()
-        .includes(q.toLowerCase()),
-  );
+  const syncData = async () => {
+    setIsSyncing(true);
+    await actions.refreshFromSupabase();
+    setIsSyncing(false);
+    setLastSyncTime(new Date().toLocaleTimeString());
+  };
+
+  useEffect(() => {
+    // Initial fetch when opening Payments tab
+    syncData();
+  }, []);
+
+  const list = payments.filter((p) => {
+    if (filter !== "all" && p.status !== filter) return false;
+    if (!q.trim()) return true;
+    const query = q.toLowerCase();
+    const u = users.find((x) => x.id === p.userId);
+    return (
+      (p.reference || "").toLowerCase().includes(query) ||
+      (p.payerName || "").toLowerCase().includes(query) ||
+      (p.bank || "").toLowerCase().includes(query) ||
+      (u?.name || "").toLowerCase().includes(query) ||
+      (u?.email || "").toLowerCase().includes(query) ||
+      (p.userId || "").toLowerCase().includes(query)
+    );
+  });
 
   return (
     <Card>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/40">
         <div className="flex flex-wrap items-center gap-2">
-          {(["pending", "approved", "rejected", "all"] as const).map((f) => (
-            <Button
-              key={f}
-              variant={filter === f ? "primary" : "outline"}
-              className="capitalize text-xs py-1.5 px-3"
-              onClick={() => setFilter(f)}
-            >
-              {f}
-            </Button>
-          ))}
+          {(["pending", "approved", "rejected", "all"] as const).map((f) => {
+            const count = payments.filter((p) => (f === "all" ? true : p.status === f)).length;
+            return (
+              <Button
+                key={f}
+                variant={filter === f ? "primary" : "outline"}
+                className="capitalize text-xs py-1.5 px-3 flex items-center gap-1.5"
+                onClick={() => setFilter(f)}
+              >
+                <span>{f}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
+                    filter === f
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              </Button>
+            );
+          })}
         </div>
-        <Input
-          placeholder="Search reference, payer name, or email..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="max-w-xs"
-        />
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="text-xs py-1.5 px-3 flex items-center gap-1.5 border-teal/40 text-teal hover:bg-teal/10"
+            disabled={isSyncing}
+            onClick={syncData}
+            title={`Fetch latest payments directly from Supabase. Last synced: ${lastSyncTime}`}
+          >
+            <span className={isSyncing ? "animate-spin" : ""}>🔄</span>
+            {isSyncing ? "Syncing DB..." : "Refresh Payments"}
+          </Button>
+
+          <Input
+            placeholder="Search reference, payer name, or email..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="max-w-xs text-xs"
+          />
+        </div>
       </div>
 
       <div className="mt-4 overflow-x-auto w-full">
         <table className="w-full text-sm min-w-[650px]">
           <thead className="text-left text-xs uppercase text-muted-foreground border-b border-border">
             <tr>
-              <th className="py-2.5">User</th>
+              <th className="py-2.5">User / Student</th>
               <th>Plan</th>
               <th>Amount (₦)</th>
               <th>Bank / Reference</th>
@@ -1395,16 +1457,36 @@ function Payments() {
           </thead>
           <tbody>
             {list.map((p) => {
-              const u = users.find((x) => x.id === p.userId);
+              const u = users.find(
+                (x) =>
+                  x.id === p.userId ||
+                  (p.payerName &&
+                    (x.name?.toLowerCase() === p.payerName.toLowerCase() ||
+                      x.email?.toLowerCase() === p.payerName.toLowerCase())),
+              );
               const plan = plans.find((x) => x.id === p.plan);
               const mismatch = plan && p.amount < plan.price;
 
               return (
-                <tr key={p.id} className="border-t border-border align-top hover:bg-muted/30 transition">
+                <tr
+                  key={p.id}
+                  className="border-t border-border align-top hover:bg-muted/30 transition"
+                >
                   <td className="py-3">
-                    <div className="font-semibold text-primary">{u?.name ?? "Student"}</div>
-                    <div className="text-xs text-muted-foreground">{u?.email}</div>
-                    <div className="text-xs mt-0.5">Payer: {p.payerName}</div>
+                    <div className="font-semibold text-primary">
+                      {u?.name || p.payerName || "Student"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {u?.email || (p.userId ? `ID: ${p.userId}` : "Unlinked")}
+                    </div>
+                    {u?.institution && (
+                      <div className="text-xs text-teal font-medium mt-0.5">
+                        {u.institution} {u.department ? `• ${u.department}` : ""}
+                      </div>
+                    )}
+                    <div className="text-xs mt-1 text-muted-foreground">
+                      Payer: <span className="font-medium text-foreground">{p.payerName}</span>
+                    </div>
                     {p.note && (
                       <div className="text-xs italic text-muted-foreground mt-0.5">"{p.note}"</div>
                     )}
@@ -1422,7 +1504,9 @@ function Payments() {
                   </td>
                   <td>
                     <div className="font-medium text-xs">{p.bank || "Bank Transfer"}</div>
-                    <div className="font-mono text-xs text-muted-foreground">{p.reference}</div>
+                    <div className="font-mono text-xs text-primary font-semibold tracking-wide mt-0.5">
+                      {p.reference}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap text-xs">{p.paidOn}</td>
                   <td>
@@ -1443,23 +1527,27 @@ function Payments() {
                         <div className="flex gap-2">
                           <Button
                             variant="lime"
-                            className="py-1 px-3 text-xs"
-                            onClick={() => actions.reviewPayment(p.id, true, notes[p.id])}
+                            className="py-1 px-3 text-xs flex items-center gap-1 font-semibold"
+                            onClick={async () => {
+                              actions.reviewPayment(p.id, true, notes[p.id]);
+                              await actions.refreshFromSupabase();
+                            }}
                           >
-                            Approve
+                            ✓ Approve
                           </Button>
                           <Button
                             variant="danger"
-                            className="py-1 px-3 text-xs"
-                            onClick={() =>
+                            className="py-1 px-3 text-xs flex items-center gap-1"
+                            onClick={async () => {
                               actions.reviewPayment(
                                 p.id,
                                 false,
                                 notes[p.id] || "Payment verification failed",
-                              )
-                            }
+                              );
+                              await actions.refreshFromSupabase();
+                            }}
                           >
-                            Reject
+                            ✕ Reject
                           </Button>
                         </div>
                       </div>

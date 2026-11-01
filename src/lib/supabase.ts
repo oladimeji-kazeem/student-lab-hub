@@ -378,3 +378,301 @@ export async function syncPaymentToSupabase(payment: {
     console.warn("Supabase syncPayment failed:", err);
   }
 }
+
+/**
+ * Sync Lab Assignment to Supabase 'lab_assignments' table
+ */
+export async function syncAssignmentToSupabase(asg: {
+  id: string;
+  title: string;
+  courseCode: string;
+  institution: string;
+  department: string;
+  kernel: string;
+  instructions: string;
+  starterCode: string;
+  expectedKeywords: string[];
+  expectPlot?: boolean | undefined;
+  maxScore: number;
+  dueDate: string;
+  createdBy: string;
+  createdAt: string;
+}) {
+  try {
+    await supabase.from("lab_assignments").upsert(
+      {
+        id: asg.id,
+        title: asg.title,
+        course_code: asg.courseCode,
+        institution: asg.institution,
+        department: asg.department,
+        kernel: asg.kernel,
+        instructions: asg.instructions,
+        starter_code: asg.starterCode,
+        expected_keywords: asg.expectedKeywords,
+        expect_plot: Boolean(asg.expectPlot),
+        max_score: asg.maxScore,
+        due_date: asg.dueDate,
+        created_by: asg.createdBy,
+        created_at: asg.createdAt,
+      },
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("Supabase syncAssignment notice:", err);
+  }
+}
+
+/**
+ * Sync Student Lab Submission / Grade to Supabase 'lab_submissions' table
+ */
+export async function syncSubmissionToSupabase(sub: {
+  id: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  institution?: string | undefined;
+  department?: string | undefined;
+  kernel: string;
+  code: string;
+  output: string;
+  autoScore: number;
+  finalScore: number;
+  maxScore: number;
+  status: string;
+  feedback?: string | undefined;
+  gradedBy?: string | undefined;
+  submittedAt: string;
+  gradedAt?: string | undefined;
+}) {
+  try {
+    await supabase.from("lab_submissions").upsert(
+      {
+        id: sub.id,
+        assignment_id: sub.assignmentId,
+        assignment_title: sub.assignmentTitle,
+        student_id: sub.studentId,
+        student_name: sub.studentName,
+        student_email: sub.studentEmail,
+        institution: sub.institution ?? null,
+        department: sub.department ?? null,
+        kernel: sub.kernel,
+        code: sub.code,
+        output: sub.output,
+        auto_score: sub.autoScore,
+        final_score: sub.finalScore,
+        max_score: sub.maxScore,
+        status: sub.status,
+        feedback: sub.feedback ?? null,
+        graded_by: sub.gradedBy ?? null,
+        submitted_at: sub.submittedAt,
+        graded_at: sub.gradedAt ?? null,
+      },
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("Supabase syncSubmission notice:", err);
+  }
+}
+
+/**
+ * Fetch Lab Assignments from Supabase with graceful fallback
+ */
+export async function getAssignments(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("lab_assignments")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        courseCode: d.course_code,
+        institution: d.institution,
+        department: d.department,
+        kernel: d.kernel,
+        instructions: d.instructions,
+        starterCode: d.starter_code,
+        expectedKeywords: d.expected_keywords || [],
+        expectPlot: d.expect_plot,
+        maxScore: d.max_score,
+        dueDate: d.due_date,
+        createdBy: d.created_by,
+        createdAt: d.created_at,
+      }));
+    }
+  } catch (err) {
+    console.warn("Supabase assignments fetch error:", err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Lab Submissions from Supabase with graceful fallback
+ */
+export async function getSubmissions(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("lab_submissions")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((d: any) => ({
+        id: d.id,
+        assignmentId: d.assignment_id,
+        assignmentTitle: d.assignment_title,
+        studentId: d.student_id,
+        studentName: d.student_name,
+        studentEmail: d.student_email,
+        institution: d.institution,
+        department: d.department,
+        kernel: d.kernel,
+        code: d.code,
+        output: d.output,
+        plots: [],
+        autoScore: d.auto_score,
+        autoChecksPassed: [],
+        autoChecksFailed: [],
+        finalScore: d.final_score,
+        maxScore: d.max_score,
+        status: d.status,
+        feedback: d.feedback,
+        gradedBy: d.graded_by,
+        submittedAt: d.submitted_at,
+        gradedAt: d.graded_at,
+      }));
+    }
+  } catch (err) {
+    console.warn("Supabase submissions fetch error:", err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Plans from Supabase with graceful fallback
+ */
+export async function getPlans(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("plans")
+      .select("*")
+      .order("duration_days", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        days: p.duration_days,
+        price: Number(p.price),
+        envs: p.envs || [],
+      }));
+    }
+  } catch (err) {
+    console.warn("Supabase plans fetch error:", err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Portal Settings from Supabase with graceful fallback
+ */
+export async function getPortalSettings(): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from("portal_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (!error && data) {
+      return {
+        bankName: data.bank_name,
+        accountName: data.account_name,
+        accountNumber: data.account_number,
+        instructions: data.instructions,
+        allowRegistration: data.allow_registration,
+        maintenance: data.maintenance_mode,
+      };
+    }
+  } catch (err) {
+    console.warn("Supabase portal_settings fetch error:", err);
+  }
+  return null;
+}
+
+/**
+ * Fetch Users from Supabase with graceful fallback
+ */
+export async function getUsersFromSupabase(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        password: "password123", // fallback placeholder for client auth
+        role: u.role || "user",
+        status: u.status || "active",
+        accountType: u.account_type || "student",
+        institution: u.institution,
+        department: u.department,
+        course: u.course_of_study,
+        degree: u.degree_level,
+        currentRole: u.current_role,
+        employer: u.employer,
+        stateOfResidence: u.state_of_residence,
+        createdAt: u.created_at,
+        accessUntil: u.access_until,
+        envs: u.envs || [],
+      }));
+    }
+  } catch (err) {
+    console.warn("Supabase users fetch error:", err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Payments from Supabase with graceful fallback
+ */
+export async function getPaymentsFromSupabase(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((p: any) => ({
+        id: p.id,
+        userId: p.user_id,
+        plan: p.plan_id,
+        amount: Number(p.amount),
+        bank: p.bank_name,
+        reference: p.reference,
+        paidOn: p.paid_on,
+        payerName: p.payer_name,
+        note: p.note,
+        status: p.status,
+        createdAt: p.created_at,
+        reviewedAt: p.reviewed_at,
+        adminNote: p.admin_note,
+      }));
+    }
+  } catch (err) {
+    console.warn("Supabase payments fetch error:", err);
+  }
+  return [];
+}
+
+
