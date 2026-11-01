@@ -2,8 +2,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
-import { AppShell, Button, Card } from "@/components/ui-kit";
-import { Gate, run, loadR, isWasmReady } from "@/components/CodeLab";
+import { AppShell, Button } from "@/components/ui-kit";
+import {
+  Gate,
+  runRich,
+  loadR,
+  isWasmReady,
+  installPythonPackages,
+  getInstalledPyPackages,
+} from "@/components/CodeLab";
 import { CodeEditor } from "@/components/CodeEditor";
 import { actions } from "@/lib/store";
 import {
@@ -13,11 +20,12 @@ import {
   downloadRWorkspace,
   type NotebookCellExport,
 } from "@/lib/code-export";
+import { LAB_TEMPLATES } from "@/lib/ml-templates";
 
 export const Route = createFileRoute("/lab/notebook")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      kernel: (search.kernel === "r" ? "r" : "python") as "python" | "r",
+      kernel: (search["kernel"] === "r" ? "r" : "python") as "python" | "r",
     };
   },
   head: () => ({
@@ -40,96 +48,43 @@ export const Route = createFileRoute("/lab/notebook")({
 });
 
 interface Cell extends NotebookCellExport {
-  isEditingMd?: boolean;
-  status?: "idle" | "running" | "success" | "error";
-  elapsed?: number;
+  isEditingMd?: boolean | undefined;
+  status?: "idle" | "running" | "success" | "error" | undefined;
+  elapsed?: number | undefined;
 }
 
-const defaultPythonCells: Cell[] = [
-  {
-    id: "nb-1",
-    type: "markdown",
-    content:
-      "# Lab Notebook: Python Data Science\nWelcome to your browser notebook! Add code cells, execute calculations with NumPy & Pandas, and export as **.ipynb** or **.py**.",
-    isEditingMd: false,
-  },
-  {
-    id: "nb-2",
-    type: "code",
-    content: `import numpy as np
-
-# Generate random sample
-sample = np.random.normal(loc=50, scale=12, size=1000)
-print(f"Sample size: {len(sample)}")
-print(f"Mean       : {np.mean(sample):.3f}")
-print(f"Std Dev    : {np.std(sample):.3f}")
-print(f"Median     : {np.median(sample):.3f}")`,
-    executionCount: 1,
-    outputs: ["Sample size: 1000\nMean       : 49.982\nStd Dev    : 12.045\nMedian     : 50.114\n"],
-    status: "success",
-  },
-  {
-    id: "nb-3",
-    type: "markdown",
-    content: "### Iteration & Trials\nRun the next cell to perform multi-trial calculations:",
-    isEditingMd: false,
-  },
-  {
-    id: "nb-4",
-    type: "code",
-    content: `trials = [np.random.randint(1, 100) for _ in range(5)]
-print("Simulated trials:", trials)
-print("Max trial:", max(trials))`,
-    executionCount: 2,
-    outputs: ["Simulated trials: [42, 87, 19, 93, 61]\nMax trial: 93\n"],
-    status: "success",
-  },
+const POPULAR_PY_PACKAGES = [
+  "scikit-learn",
+  "matplotlib",
+  "seaborn",
+  "pandas",
+  "scipy",
+  "statsmodels",
+  "nltk",
 ];
 
-const defaultRCells: Cell[] = [
-  {
-    id: "nb-r1",
-    type: "markdown",
-    content:
-      "# Lab Notebook: R Statistical Analysis\nInteractive R notebook powered by WebR. Run statistics, regressions, and download your workspace as **.RData**, **.rda**, **.R**, or **.ipynb**.",
+function cloneTemplateCells(templateId: string): Cell[] {
+  const tmpl = LAB_TEMPLATES.find((t) => t.id === templateId) ?? LAB_TEMPLATES[0];
+  if (!tmpl) return [];
+  return tmpl.cells.map((c) => ({
+    ...c,
+    id: `${c.id}-${Math.random().toString(36).slice(2, 6)}`,
+    outputs: c.outputs ? [...c.outputs] : [],
+    plots: c.plots ? [...c.plots] : [],
     isEditingMd: false,
-  },
-  {
-    id: "nb-r2",
-    type: "code",
-    content: `# Summary statistics on mtcars dataset
-data(mtcars)
-head(mtcars[, c("mpg", "wt", "hp", "qsec")])
-summary(mtcars$mpg)`,
-    executionCount: 1,
-    outputs: [],
-    status: "idle",
-  },
-  {
-    id: "nb-r3",
-    type: "markdown",
-    content:
-      "### Linear Regression Modeling\nFit an ordinary least squares regression model of miles per gallon on weight:",
-    isEditingMd: false,
-  },
-  {
-    id: "nb-r4",
-    type: "code",
-    content: `model <- lm(mpg ~ wt, data = mtcars)
-coef(model)
-summary(model)$r.squared`,
-    executionCount: 2,
-    outputs: [],
-    status: "idle",
-  },
-];
+    status: c.outputs && c.outputs.length > 0 ? "success" : "idle",
+  }));
+}
 
 function NotebookLab() {
   const search = Route.useSearch();
-  const [kernel, setKernel] = useState<"python" | "r">(search.kernel ?? "python");
-  const [cells, setCells] = useState<Cell[]>(
-    kernel === "python" ? defaultPythonCells : defaultRCells,
-  );
+  const initialKernel = search.kernel ?? "python";
+  const initialTemplateId =
+    initialKernel === "python" ? "py-data-science" : "r-stats-regression";
+
+  const [kernel, setKernel] = useState<"python" | "r">(initialKernel);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId);
+  const [cells, setCells] = useState<Cell[]>(() => cloneTemplateCells(initialTemplateId));
   const [runningAll, setRunningAll] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [wasmStage, setWasmStage] = useState("");
@@ -137,13 +92,57 @@ function NotebookLab() {
   const [isDownloadingWasm, setIsDownloadingWasm] = useState(false);
   const nextExecCount = useRef(Math.max(1, ...cells.map((c) => c.executionCount ?? 0)) + 1);
 
+  // micropip package installer state
+  const [pkgInput, setPkgInput] = useState("");
+  const [installingPkg, setInstallingPkg] = useState(false);
+  const [installedList, setInstalledList] = useState<string[]>(getInstalledPyPackages());
+
   // Switch templates when user changes kernel explicitly via selector
   const switchKernel = (newKernel: "python" | "r") => {
     if (newKernel === kernel) return;
+    const defaultTmpl = newKernel === "python" ? "py-data-science" : "r-stats-regression";
     setKernel(newKernel);
-    setCells(newKernel === "python" ? defaultPythonCells : defaultRCells);
+    setSelectedTemplateId(defaultTmpl);
+    setCells(cloneTemplateCells(defaultTmpl));
     nextExecCount.current = 3;
     toast.info(`Switched kernel to ${newKernel === "python" ? "Python 3" : "R 4.3"}`);
+  };
+
+  const handleSelectTemplate = (templateId: string) => {
+    const tmpl = LAB_TEMPLATES.find((t) => t.id === templateId);
+    if (!tmpl) return;
+    if (tmpl.kernel !== kernel) {
+      setKernel(tmpl.kernel);
+    }
+    setSelectedTemplateId(templateId);
+    setCells(cloneTemplateCells(templateId));
+    nextExecCount.current = 1;
+    toast.success(`Loaded notebook template: ${tmpl.name}`);
+  };
+
+  const handleInstallPkg = async (pkgName?: string) => {
+    const target = (pkgName ?? pkgInput).trim();
+    if (!target) return;
+    setInstallingPkg(true);
+    setIsDownloadingWasm(true);
+    setWasmStage(`Installing ${target} via micropip…`);
+    setWasmPercent(30);
+    try {
+      const installed = await installPythonPackages(target, (stage, pct) => {
+        setWasmStage(stage);
+        if (pct !== undefined) setWasmPercent(pct);
+      });
+      setInstalledList(getInstalledPyPackages());
+      if (!pkgName) setPkgInput("");
+      toast.success(`Installed Python package: ${installed.join(", ")}`);
+    } catch (err) {
+      toast.error(`Failed to install ${target}: ${(err as Error).message}`);
+    } finally {
+      setInstallingPkg(false);
+      setIsDownloadingWasm(false);
+      setWasmStage("");
+      setWasmPercent(0);
+    }
   };
 
   const updateCell = (id: string, patch: Partial<Cell>) => {
@@ -157,12 +156,13 @@ function NotebookLab() {
       content:
         type === "code"
           ? kernel === "python"
-            ? "# Write Python code here\n"
+            ? "# Write Python or AI/ML code here (or !pip install <pkg>)\n"
             : "# Write R code here\n"
           : "### Markdown notes\nClick to edit this text.",
       isEditingMd: type === "markdown",
       status: "idle",
       outputs: [],
+      plots: [],
     };
 
     setCells((prev) => {
@@ -191,6 +191,7 @@ function NotebookLab() {
       if (target < 0 || target >= prev.length) return prev;
       const copy = [...prev];
       const [item] = copy.splice(idx, 1);
+      if (!item) return prev;
       copy.splice(target, 0, item);
       return copy;
     });
@@ -213,23 +214,28 @@ function NotebookLab() {
     const startTime = performance.now();
 
     try {
-      const output = await run(kernel, cell.content, (stage, percent) => {
+      const res = await runRich(kernel, cell.content, (stage, percent) => {
         setWasmStage(stage);
         if (percent !== undefined) setWasmPercent(percent);
       });
       const elapsed = (performance.now() - startTime) / 1000;
+      const hasText = Boolean(res.text && res.text.trim());
+      const hasPlots = res.plots && res.plots.length > 0;
       updateCell(cell.id, {
         status: "success",
-        outputs: output ? [output] : ["(No output)"],
+        outputs: hasText ? [res.text] : hasPlots ? [] : ["(Executed with no stdout)"],
+        plots: res.plots,
         executionCount: execNum,
         elapsed,
       });
+      setInstalledList(getInstalledPyPackages());
       actions.countRun();
     } catch (err) {
       const elapsed = (performance.now() - startTime) / 1000;
       updateCell(cell.id, {
         status: "error",
         outputs: [`Error: ${(err as Error).message}`],
+        plots: [],
         executionCount: execNum,
         elapsed,
       });
@@ -257,12 +263,23 @@ function NotebookLab() {
       prev.map((c) => ({
         ...c,
         outputs: [],
+        plots: [],
         status: "idle",
         executionCount: null,
         elapsed: undefined,
       })),
     );
-    toast.info("Cleared all cell outputs");
+    toast.info("Cleared all cell outputs & plots");
+  };
+
+  const handleDownloadPlot = (dataUrl: string, cellExec: number | null | undefined, idx: number) => {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `notebook_cell_${cellExec ?? 1}_plot_${idx + 1}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success("Downloaded plot as .png");
   };
 
   // Export handlers
@@ -309,7 +326,7 @@ function NotebookLab() {
     <AppShell title="Interactive Notebook">
       <Gate env="notebook">
         {/* Main Notebook Header Bar */}
-        <div className="mb-6 space-y-4 rounded-2xl glass p-4 shadow-card">
+        <div className="mb-6 space-y-3.5 rounded-2xl glass p-4 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-display font-bold text-primary">Kernel:</span>
@@ -335,6 +352,32 @@ function NotebookLab() {
                 >
                   <span className="font-mono text-teal font-bold">R</span>R 4.3 (WebR)
                 </button>
+              </div>
+
+              {/* AI/ML & Statistical Notebook Template Selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-primary">🤖 AI/ML Template:</span>
+                <select
+                  aria-label="Select AI/ML Notebook Template"
+                  value={selectedTemplateId}
+                  onChange={(e) => handleSelectTemplate(e.target.value)}
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-teal"
+                >
+                  <optgroup label="Python AI, Machine Learning & Data Science">
+                    {LAB_TEMPLATES.filter((t) => t.kernel === "python").map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.badge})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="R Statistical & ML Modeling">
+                    {LAB_TEMPLATES.filter((t) => t.kernel === "r").map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.badge})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
               </div>
 
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-medium text-success">
@@ -376,11 +419,70 @@ function NotebookLab() {
             </div>
           </div>
 
+          {/* micropip Package Manager Bar (Python Kernel) */}
+          {kernel === "python" && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-primary">📦 micropip Packages:</span>
+                {POPULAR_PY_PACKAGES.map((pkg) => {
+                  const isInstalled = installedList.includes(pkg);
+                  return (
+                    <button
+                      key={pkg}
+                      type="button"
+                      disabled={installingPkg || runningAll}
+                      onClick={() => handleInstallPkg(pkg)}
+                      className={`rounded-md border px-2 py-0.5 font-mono text-[11px] transition ${
+                        isInstalled
+                          ? "border-success/40 bg-success/15 text-success font-semibold"
+                          : "border-border bg-card/80 text-muted-foreground hover:border-teal hover:text-foreground"
+                      }`}
+                      title={
+                        isInstalled
+                          ? `${pkg} is ready`
+                          : `Click to install ${pkg} via micropip`
+                      }
+                    >
+                      {isInstalled ? `✓ ${pkg}` : `+ ${pkg}`}
+                    </button>
+                  );
+                })}
+                <span className="text-[11px] text-muted-foreground ml-1 hidden md:inline">
+                  (Tip: You can also run <code className="font-mono text-primary">!pip install pkg</code> inside any cell)
+                </span>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleInstallPkg();
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <input
+                  type="text"
+                  value={pkgInput}
+                  onChange={(e) => setPkgInput(e.target.value)}
+                  placeholder="Install PyPI pkg (e.g. joblib)..."
+                  className="w-48 rounded-lg border border-border bg-card px-2.5 py-1 font-mono text-xs outline-none focus:ring-1 focus:ring-teal"
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={installingPkg || runningAll || !pkgInput.trim()}
+                  className="py-1 px-2.5 text-xs"
+                >
+                  {installingPkg ? "Installing…" : "Install"}
+                </Button>
+              </form>
+            </div>
+          )}
+
           {/* Download & Export Ribbon */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               <span className="font-semibold text-primary">Export Options:</span>
-              <span>Download your code and notebook in any of the supported formats below.</span>
+              <span>Download your notebook (including embedded plots) in any supported format.</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -448,7 +550,7 @@ function NotebookLab() {
               />
             </div>
             <div className="mt-1 text-[11px] text-muted-foreground">
-              Initial load fetches pre-compiled WebAssembly binaries. Subsequent executions run instantly from local cache.
+              Initial load fetches pre-compiled WebAssembly binaries & ML packages. Subsequent executions run instantly from cache.
             </div>
           </div>
         )}
@@ -476,6 +578,11 @@ function NotebookLab() {
                       {cell.elapsed.toFixed(2)}s
                     </span>
                   )}
+                  {cell.plots && cell.plots.length > 0 && (
+                    <span className="rounded-full bg-teal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal">
+                      📊 {cell.plots.length} {cell.plots.length === 1 ? "figure" : "figures"}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
@@ -490,9 +597,7 @@ function NotebookLab() {
                         <span className="flex items-center gap-1.5">
                           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                           <span className="text-[11px]">
-                            {isDownloadingWasm && wasmPercent > 0
-                              ? `${wasmPercent}%`
-                              : "Running…"}
+                            {isDownloadingWasm && wasmPercent > 0 ? `${wasmPercent}%` : "Running…"}
                           </span>
                         </span>
                       ) : (
@@ -549,19 +654,54 @@ function NotebookLab() {
                     minHeight="70px"
                   />
 
-                  {/* Cell Output Area */}
-                  {cell.outputs && cell.outputs.length > 0 && (
-                    <div className="border-t border-editor-panel bg-editor-panel/70 p-3">
-                      <div className="mb-1 text-[11px] font-mono text-teal">
+                  {/* Cell Output & Inline Plots Area */}
+                  {((cell.outputs && cell.outputs.length > 0) ||
+                    (cell.plots && cell.plots.length > 0)) && (
+                    <div className="border-t border-editor-panel bg-editor-panel/70 p-3 space-y-3">
+                      <div className="text-[11px] font-mono text-teal">
                         Out [{cell.executionCount}]:
                       </div>
-                      <pre
-                        className={`overflow-x-auto whitespace-pre-wrap font-mono text-xs ${
-                          cell.status === "error" ? "text-destructive" : "text-lime"
-                        }`}
-                      >
-                        {cell.outputs.join("\n")}
-                      </pre>
+
+                      {cell.outputs && cell.outputs.length > 0 && (
+                        <pre
+                          className={`overflow-x-auto whitespace-pre-wrap font-mono text-xs ${
+                            cell.status === "error" ? "text-destructive" : "text-lime"
+                          }`}
+                        >
+                          {cell.outputs.join("\n")}
+                        </pre>
+                      )}
+
+                      {cell.plots && cell.plots.length > 0 && (
+                        <div className="grid gap-3 pt-1">
+                          {cell.plots.map((plotUrl, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="overflow-hidden rounded-xl border border-editor-panel bg-white p-2.5 shadow-sm"
+                            >
+                              <div className="mb-1.5 flex items-center justify-between px-1">
+                                <span className="font-mono text-[11px] font-semibold text-slate-600">
+                                  📊 Figure {pIdx + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDownloadPlot(plotUrl, cell.executionCount, pIdx)
+                                  }
+                                  className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
+                                >
+                                  📥 Save .png
+                                </button>
+                              </div>
+                              <img
+                                src={plotUrl}
+                                alt={`Cell ${cell.executionCount} Figure ${pIdx + 1}`}
+                                className="mx-auto max-h-[420px] w-auto object-contain rounded"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

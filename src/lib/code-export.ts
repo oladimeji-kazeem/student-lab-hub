@@ -6,6 +6,7 @@ export interface NotebookCellExport {
   type: "code" | "markdown";
   content: string;
   outputs?: string[];
+  plots?: string[];
   executionCount?: number | null;
 }
 
@@ -60,6 +61,19 @@ export function buildIpynbJson(cells: NotebookCellExport[], kernel: "python" | "
         output_type: "stream",
         text: outputText.split("\n").map((l, i, arr) => (i < arr.length - 1 ? l + "\n" : l)),
       });
+    }
+    if (cell.plots && cell.plots.length > 0) {
+      for (const plotUrl of cell.plots) {
+        const base64Data = plotUrl.replace(/^data:image\/png;base64,/, "");
+        outputs.push({
+          output_type: "display_data",
+          data: {
+            "image/png": base64Data,
+            "text/plain": ["<Figure>"],
+          },
+          metadata: {},
+        });
+      }
     }
 
     return {
