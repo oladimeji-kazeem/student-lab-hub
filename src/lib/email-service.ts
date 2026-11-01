@@ -385,54 +385,50 @@ export function buildPaymentApprovedEmail(
 }
 
 // ---------------------------------------------------------------------------
-// Core Dispatcher: Logs to Supabase email_notifications & sends via Resend if key exists
+// Core Dispatcher: Dispatches via Hostinger SMTP / API & logs to Supabase
 // ---------------------------------------------------------------------------
 export async function sendEmailNotification(
   opts: SendEmailOptions,
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const resendApiKey =
-      (typeof process !== "undefined" ? process.env.RESEND_API_KEY : null) ||
-      (import.meta as any).env?.VITE_RESEND_API_KEY ||
-      null;
-
     let deliveryStatus: "sent" | "failed" = "sent";
+    let dispatchError: string | undefined;
 
-    // 1. If Resend API key is available, dispatch live email via Resend REST API
-    if (resendApiKey) {
+    // 1. Attempt server-side dispatch via Hostinger SMTP (smtp.hostinger.com:465)
+    if (typeof window !== "undefined") {
       try {
-        const response = await fetch("https://api.resend.com/emails", {
+        const res = await fetch("/api/send-email", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            from: "e-Lab <notifications@ai-gardia.com>",
-            to: [opts.to],
-            cc: opts.cc && opts.cc.length > 0 ? opts.cc : undefined,
+            to: opts.to,
+            cc: opts.cc,
             subject: opts.subject,
             html: opts.html,
+            from: "info@ai-gardia.com",
           }),
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          console.warn("Resend email dispatch error:", errData);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
           deliveryStatus = "failed";
+          dispatchError = data.error || `HTTP ${res.status}`;
+          console.warn("Hostinger SMTP dispatch notice:", data.error || data);
+        } else {
+          deliveryStatus = "sent";
         }
-      } catch (e) {
-        console.warn("Failed to reach Resend API:", e);
+      } catch (err: any) {
         deliveryStatus = "failed";
+        dispatchError = err?.message || String(err);
+        console.warn("Hostinger SMTP server endpoint notice:", err);
       }
-    } else {
-      // In development or when API key is not yet set, we log clearly
-      console.log(
-        `%c[EMAIL DISPATCH] %cTo: ${opts.to} | CC: ${(opts.cc || []).join(", ")} | Subject: ${opts.subject}`,
-        "color: #00A896; font-weight: bold;",
-        "color: #071E5D;",
-      );
     }
+
+    console.log(
+      `%c[EMAIL DISPATCH] %cTo: ${opts.to} | CC: ${(opts.cc || []).join(", ")} | Subject: ${opts.subject} [${deliveryStatus.toUpperCase()}]`,
+      "color: #00A896; font-weight: bold;",
+      "color: #071E5D;",
+    );
 
     // 2. Persist notification record to Supabase 'email_notifications' table for audit trail & admin review
     const { data, error } = await supabase
@@ -444,7 +440,12 @@ export async function sendEmailNotification(
         email_type: opts.emailType,
         html_content: opts.html,
         status: deliveryStatus,
-        metadata: opts.metadata || {},
+        metadata: {
+          ...(opts.metadata || {}),
+          smtpServer: "smtp.hostinger.com:465",
+          smtpSender: "info@ai-gardia.com",
+          dispatchError: dispatchError || null,
+        },
         sent_at: new Date().toISOString(),
       })
       .select("id")
@@ -454,7 +455,11 @@ export async function sendEmailNotification(
       console.warn("Supabase email_notifications logging notice:", error.message);
     }
 
-    return { success: true, id: data?.id };
+    return {
+      success: deliveryStatus === "sent",
+      id: data?.id,
+      error: dispatchError,
+    };
   } catch (err: any) {
     console.warn("sendEmailNotification encountered error:", err);
     return { success: false, error: err?.message || String(err) };
@@ -594,3 +599,4 @@ export async function getEmailNotifications(): Promise<EmailNotificationRecord[]
   }
   return [];
 }
+

@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { sendSmtpEmail, testHostingerSmtpConnection } from "./lib/smtp-sender";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +48,53 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+
+      // Dedicated Server API: Send Email via Hostinger SMTP (Port 465 SSL)
+      if (url.pathname === "/api/send-email" && request.method === "POST") {
+        try {
+          const body = (await request.json()) as any;
+          const result = await sendSmtpEmail({
+            to: body.to,
+            cc: body.cc,
+            subject: body.subject,
+            html: body.html,
+            text: body.text,
+            from: body.from || "info@ai-gardia.com",
+          });
+          return new Response(JSON.stringify(result), {
+            status: result.success ? 200 : 502,
+            headers: { "content-type": "application/json" },
+          });
+        } catch (err: any) {
+          return new Response(
+            JSON.stringify({ success: false, error: err?.message || String(err) }),
+            {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            },
+          );
+        }
+      }
+
+      // Dedicated Server API: Test Hostinger SMTP Handshake
+      if (url.pathname === "/api/test-smtp") {
+        try {
+          const result = await testHostingerSmtpConnection();
+          return new Response(JSON.stringify(result), {
+            headers: { "content-type": "application/json" },
+          });
+        } catch (err: any) {
+          return new Response(
+            JSON.stringify({ success: false, error: err?.message || String(err) }),
+            {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            },
+          );
+        }
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
