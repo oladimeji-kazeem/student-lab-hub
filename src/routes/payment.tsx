@@ -72,12 +72,15 @@ function PaymentPage() {
         ? customBank.trim()
         : selectedBank;
 
+    const autoRef = `TX-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const cleanRef = f.reference.trim() || autoRef;
+
     actions.submitPayment({
       plan: plan!.id,
       bank: effectiveBank,
-      reference: f.reference,
+      reference: cleanRef,
       paidOn: f.paidOn,
-      payerName: f.payerName,
+      payerName: f.payerName.trim() || user?.name || "Student",
       amount: Number(f.amount || plan!.price),
       note: f.note,
     });

@@ -17,7 +17,8 @@ import {
 export const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || "https://egnstirfqhpgzfuezlwo.supabase.co";
 export const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_AvTKJf4RaBJGI84947KKBQ_l7e2IpLj";
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnbnN0aXJmcWhwZ3pmdWV6bHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MDIwMTYsImV4cCI6MjEwNzM3ODAxNn0.sRsCxxIQXkSO526tyEkwsg5M0oNsGn58iJ-Z36Vmbl0";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -355,6 +356,34 @@ export async function syncPaymentToSupabase(payment: {
   status: string;
 }) {
   try {
+    const safeRef =
+      payment.reference?.trim() ||
+      `TX-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // Ensure the parent user row exists before inserting payment to prevent foreign key violation
+    if (payment.userId) {
+      const { data: userExists } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", payment.userId)
+        .maybeSingle();
+
+      if (!userExists) {
+        await supabase.from("users").upsert(
+          {
+            id: payment.userId,
+            name: payment.payerName || "Student",
+            email: `${payment.userId}@e-lab.ng`,
+            role: "user",
+            status: "pending",
+            account_type: "student",
+            envs: [],
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
     const { error } = await supabase.from("payments").upsert(
       {
         id: payment.id,
@@ -362,7 +391,7 @@ export async function syncPaymentToSupabase(payment: {
         plan_id: payment.plan,
         amount: payment.amount,
         bank_name: payment.bank,
-        reference: payment.reference,
+        reference: safeRef,
         paid_on: payment.paidOn,
         payer_name: payment.payerName,
         note: payment.note,
