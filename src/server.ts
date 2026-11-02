@@ -54,14 +54,17 @@ export default {
       if (url.pathname === "/api/send-email" && request.method === "POST") {
         try {
           const body = (await request.json()) as any;
-          const result = await sendSmtpEmail({
-            to: body.to,
-            cc: body.cc,
-            subject: body.subject,
-            html: body.html,
-            text: body.text,
-            from: body.from || "info@ai-gardia.com",
-          });
+          const result = await sendSmtpEmail(
+            {
+              to: body.to,
+              cc: body.cc,
+              subject: body.subject,
+              html: body.html,
+              text: body.text,
+              from: body.from || "info@ai-gardia.com",
+            },
+            body.smtpConfig,
+          );
           return new Response(JSON.stringify(result), {
             status: result.success ? 200 : 502,
             headers: { "content-type": "application/json" },
@@ -80,7 +83,20 @@ export default {
       // Dedicated Server API: Test Hostinger SMTP Handshake
       if (url.pathname === "/api/test-smtp") {
         try {
-          const result = await testHostingerSmtpConnection();
+          let testConfig: any;
+          if (request.method === "POST") {
+            const body = (await request.json().catch(() => ({}))) as any;
+            if (body && (body.user || body.pass || body.host)) {
+              testConfig = {
+                host: body.host || process.env.SMTP_HOST || "smtp.hostinger.com",
+                port: Number(body.port) || Number(process.env.SMTP_PORT) || 465,
+                user: body.user || process.env.SMTP_USER || "info@ai-gardia.com",
+                pass: body.pass || process.env.SMTP_PASS || "Labake@2026",
+                from: body.from || body.user || "info@ai-gardia.com",
+              };
+            }
+          }
+          const result = await testHostingerSmtpConnection(testConfig);
           return new Response(JSON.stringify(result), {
             headers: { "content-type": "application/json" },
           });

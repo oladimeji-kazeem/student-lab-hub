@@ -18,11 +18,26 @@ export function EmailNotificationsModule() {
   const [selectedEmail, setSelectedEmail] = useState<EmailNotificationRecord | null>(null);
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [smtpDiag, setSmtpDiag] = useState<{ testing: boolean; result?: any } | null>(null);
+  const [showCredEditor, setShowCredEditor] = useState(false);
+  const [hostInput, setHostInput] = useState("smtp.hostinger.com");
+  const [portInput, setPortInput] = useState("465");
+  const [userInput, setUserInput] = useState("info@ai-gardia.com");
+  const [passInput, setPassInput] = useState("Labake@2026");
 
-  const handleTestSmtp = async () => {
+  const handleTestSmtp = async (customCreds?: { host: string; port: number; user: string; pass: string }) => {
     setSmtpDiag({ testing: true });
     try {
-      const res = await fetch("/api/test-smtp");
+      const payload = customCreds || {
+        host: hostInput,
+        port: Number(portInput) || 465,
+        user: userInput,
+        pass: passInput,
+      };
+      const res = await fetch("/api/test-smtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const data = await res.json();
       setSmtpDiag({ testing: false, result: data });
     } catch (e: any) {
@@ -160,38 +175,109 @@ export function EmailNotificationsModule() {
               Configured Mail Server
             </div>
             <h3 className="text-sm sm:text-base font-bold text-primary mt-0.5">
-              Hostinger SMTP (<code className="text-xs">smtp.hostinger.com:465 SSL</code>)
+              Hostinger SMTP (<code className="text-xs">{hostInput}:{portInput} SSL</code>)
             </h3>
           </div>
-          <Button
-            variant="outline"
-            className="text-xs py-1.5 px-3 border-teal/40 text-teal hover:bg-teal/10 flex items-center gap-1.5"
-            disabled={smtpDiag?.testing}
-            onClick={handleTestSmtp}
-          >
-            <span>{smtpDiag?.testing ? "⏳" : "⚡"}</span>
-            {smtpDiag?.testing ? "Testing Handshake..." : "Test Hostinger SMTP Handshake"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-xs py-1.5 px-3 border-border hover:bg-muted"
+              onClick={() => setShowCredEditor(!showCredEditor)}
+            >
+              {showCredEditor ? "Hide Config" : "⚙️ Edit / Verify Credentials"}
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs py-1.5 px-3 border-teal/40 text-teal hover:bg-teal/10 flex items-center gap-1.5"
+              disabled={smtpDiag?.testing}
+              onClick={() => handleTestSmtp()}
+            >
+              <span>{smtpDiag?.testing ? "⏳" : "⚡"}</span>
+              {smtpDiag?.testing ? "Testing Handshake..." : "Test Hostinger SMTP Handshake"}
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <span className="text-muted-foreground block text-[11px]">SMTP Host</span>
-            <span className="font-mono font-semibold text-primary">smtp.hostinger.com</span>
+        {/* Read-only Quick Specs */}
+        {!showCredEditor && (
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-muted-foreground block text-[11px]">SMTP Host</span>
+              <span className="font-mono font-semibold text-primary">{hostInput}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[11px]">Port / Security</span>
+              <span className="font-semibold text-primary">{portInput} (Direct SSL)</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[11px]">Sender Username</span>
+              <span className="font-mono font-semibold text-primary">{userInput}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[11px]">Password State</span>
+              <span className="font-semibold text-success">Configured ({passInput.replace(/./g, "•")})</span>
+            </div>
           </div>
-          <div>
-            <span className="text-muted-foreground block text-[11px]">Port / Security</span>
-            <span className="font-semibold text-primary">465 (Direct SSL)</span>
+        )}
+
+        {/* Interactive Credential Test Form */}
+        {showCredEditor && (
+          <div className="mt-4 pt-3 border-t border-border/30 space-y-3 bg-card/60 p-3.5 rounded-lg">
+            <div className="text-xs font-semibold text-primary flex items-center justify-between">
+              <span>Test Live Credentials against Hostinger Mail Server</span>
+              <span className="text-[11px] text-muted-foreground">Changes here test immediately against the live socket</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Host</label>
+                <Input
+                  className="text-xs font-mono h-8"
+                  value={hostInput}
+                  onChange={(e) => setHostInput(e.target.value)}
+                  placeholder="smtp.hostinger.com"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Port</label>
+                <Input
+                  className="text-xs font-mono h-8"
+                  value={portInput}
+                  onChange={(e) => setPortInput(e.target.value)}
+                  placeholder="465"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Username / Email</label>
+                <Input
+                  className="text-xs font-mono h-8"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  placeholder="info@ai-gardia.com"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Password</label>
+                <Input
+                  className="text-xs font-mono h-8"
+                  value={passInput}
+                  type="text"
+                  onChange={(e) => setPassInput(e.target.value)}
+                  placeholder="Labake@2026"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="text-xs py-1 px-3 border-teal/40 text-teal hover:bg-teal/10"
+                disabled={smtpDiag?.testing}
+                onClick={() => handleTestSmtp()}
+              >
+                {smtpDiag?.testing ? "Testing..." : "⚡ Test Connection with Above Values"}
+              </Button>
+            </div>
           </div>
-          <div>
-            <span className="text-muted-foreground block text-[11px]">Sender Username</span>
-            <span className="font-mono font-semibold text-primary">info@ai-gardia.com</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground block text-[11px]">Password State</span>
-            <span className="font-semibold text-success">Configured (Labake@2026)</span>
-          </div>
-        </div>
+        )}
 
         {smtpDiag?.result && (
           <div
@@ -203,7 +289,7 @@ export function EmailNotificationsModule() {
             )}
           >
             <div className="font-bold flex items-center justify-between">
-              <span>{smtpDiag.result.success ? "✓ SMTP HANDSHAKE VERIFIED" : "⚠️ SMTP HANDSHAKE NOTICE"}</span>
+              <span>{smtpDiag.result.success ? "✓ SMTP HANDSHAKE VERIFIED!" : "⚠️ HOSTINGER REJECTED AUTHENTICATION (535)"}</span>
               <button
                 className="text-[10px] underline font-sans text-muted-foreground hover:text-foreground"
                 onClick={() => setSmtpDiag(null)}
@@ -212,13 +298,36 @@ export function EmailNotificationsModule() {
               </button>
             </div>
             {smtpDiag.result.error && (
-              <p className="text-[11px] leading-relaxed font-sans text-destructive/90">
-                Response: <strong>{smtpDiag.result.error}</strong>
-                <br />
-                <span className="text-muted-foreground text-[10px]">
-                  (If authentication fails, verify in Hostinger hPanel under Email Settings that SMTP Access is active for <code>info@ai-gardia.com</code>, or log into webmail at <code>mail.hostinger.com</code> to confirm the mailbox is initialized).
-                </span>
-              </p>
+              <div className="text-[11px] leading-relaxed font-sans text-destructive/95 space-y-2">
+                <p>
+                  Server Response: <strong>{smtpDiag.result.error}</strong>
+                </p>
+                <div className="bg-background/80 p-3 rounded border border-destructive/30 space-y-1.5 text-foreground text-[11px]">
+                  <div className="font-bold text-destructive flex items-center gap-1.5">
+                    <span>📌 How to resolve this in Hostinger hPanel:</span>
+                  </div>
+                  <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
+                    <li>
+                      <strong>Confirm Webmail Login:</strong> Visit{" "}
+                      <a
+                        href="https://mail.hostinger.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-teal underline font-medium"
+                      >
+                        mail.hostinger.com
+                      </a>{" "}
+                      and verify you can log in with <code className="text-foreground font-mono">info@ai-gardia.com</code> and <code className="text-foreground font-mono">{passInput}</code>. (Hostinger blocks SMTP until the mailbox has been logged into webmail at least once).
+                    </li>
+                    <li>
+                      <strong>Check SMTP Toggle in hPanel:</strong> In Hostinger hPanel, go to <em>Emails &gt; ai-gardia.com &gt; Manage info@ai-gardia.com &gt; Settings / Access Configuration</em> and ensure <strong>"Access to SMTP"</strong> is switched <strong>ON</strong>.
+                    </li>
+                    <li>
+                      <strong>Reset Password in hPanel if needed:</strong> If the password was changed or typed differently, reset it in Hostinger hPanel to <code className="text-foreground font-mono">{passInput}</code>, wait 60 seconds, and click <strong>Test Handshake</strong> above.
+                    </li>
+                  </ol>
+                </div>
+              </div>
             )}
             {smtpDiag.result.logs && (
               <details className="text-[10px] text-muted-foreground pt-1">
