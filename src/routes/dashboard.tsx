@@ -176,6 +176,27 @@ function Dashboard() {
         </Card>
       )}
 
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal/30 bg-teal/5 p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal/15 text-2xl">
+            📚
+          </div>
+          <div>
+            <h3 className="font-bold text-foreground">
+              Academic Library & Cloud Materials (Google Drive & OneDrive)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Read practical lab manuals, course textbooks, and connect cloud datasets into Python, R, and SQL.
+            </p>
+          </div>
+        </div>
+        <Link to="/resources">
+          <Button variant="lime" className="px-3.5 py-1.5 text-xs font-bold shadow-sm">
+            Open Library ➔
+          </Button>
+        </Link>
+      </div>
+
       <h2 className="mt-8 mb-3 text-lg font-bold text-primary">Your labs</h2>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {labs.map((l) => {

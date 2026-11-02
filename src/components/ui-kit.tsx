@@ -126,6 +126,7 @@ export function Badge({ v }: { v: string }) {
 const userNav = [
   { to: "/dashboard", label: "Overview", icon: "◧" },
   { to: "/payment", label: "Payments", icon: "₦" },
+  { to: "/resources", label: "Library", icon: "📚" },
   { to: "/lab/notebook", label: "Notebook", icon: "📓" },
   { to: "/lab/python", label: "Python Lab", icon: "Py" },
   { to: "/lab/r", label: "R Lab", icon: "R" },

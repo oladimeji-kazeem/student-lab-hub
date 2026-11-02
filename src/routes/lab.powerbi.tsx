@@ -22,3 +22,4 @@ export const Route = createFileRoute("/lab/powerbi")({
   }),
   component: PowerBiLab,
 });
+
