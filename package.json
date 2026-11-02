@@ -15,7 +15,9 @@
   },
   "overrides": {
     "rolldown": "1.2.1",
-    "minimatch": "^11.0.1"
+    "minimatch": "^11.0.1",
+    "seroval": "^1.6.11",
+    "seroval-plugins": "^1.6.11"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
