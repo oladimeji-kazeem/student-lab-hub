@@ -14,6 +14,7 @@ import {
 } from "@/lib/code-export";
 import { LAB_TEMPLATES } from "@/lib/ml-templates";
 import { LabPracticePanel } from "@/components/LabPracticePanel";
+import { CloudDriveImportModal } from "@/components/CloudDriveImportModal";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let pyodide: Promise<any> | null = null;
@@ -347,6 +348,7 @@ export function CodeLab({
   const storageKey = `elab-codelab-draft-${env}-v1`;
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [code, setCode] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -616,6 +618,14 @@ export function CodeLab({
                 onClick={() => fileInputRef.current?.click()}
               >
                 📂 Upload {env === "python" ? ".py / .ipynb" : ".R / .ipynb"}
+              </Button>
+              <Button
+                variant="outline"
+                className="py-1 px-3 text-xs border-teal/60 bg-teal/10 text-teal font-semibold hover:bg-teal/20"
+                onClick={() => setCloudModalOpen(true)}
+                title="Import dataset from Google Drive or Microsoft OneDrive"
+              >
+                ☁️ Cloud Drive Import
               </Button>
               <span className="text-xs font-medium text-muted-foreground mr-1">Download:</span>
               {env === "python" ? (
@@ -898,6 +908,32 @@ export function CodeLab({
             </div>
           </div>
         </div>
+
+        {/* Cloud Drive Import Modal */}
+        <CloudDriveImportModal
+          isOpen={cloudModalOpen}
+          onClose={() => setCloudModalOpen(false)}
+          env={env}
+          onInsertCode={(newCode) => {
+            setCode((prev) => (prev.trim() ? `${prev}\n${newCode}` : newCode));
+            toast.success("Added cloud dataset snippet to editor");
+          }}
+          onMountFile={async (fileName, content) => {
+            try {
+              if (env === "python") {
+                const py = await loadPy();
+                py.FS.writeFile(fileName, content);
+              } else {
+                const w = await loadR();
+                await w.FS.writeFile(fileName, content);
+              }
+              setUploadedFileName(fileName);
+              toast.success(`Mounted ${fileName} in virtual file system!`);
+            } catch (err: any) {
+              toast.error(`Could not mount file: ${err.message}`);
+            }
+          }}
+        />
       </Gate>
     </AppShell>
   );

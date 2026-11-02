@@ -7,11 +7,13 @@ import {
   Gate,
   runRich,
   loadR,
+  loadPy,
   isWasmReady,
   installPythonPackages,
   getInstalledPyPackages,
 } from "@/components/CodeLab";
 import { CodeEditor } from "@/components/CodeEditor";
+import { CloudDriveImportModal } from "@/components/CloudDriveImportModal";
 import { actions } from "@/lib/store";
 import {
   downloadAsIpynb,
@@ -122,6 +124,7 @@ function NotebookLab() {
   });
   const [runningAll, setRunningAll] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [wasmStage, setWasmStage] = useState("");
   const [wasmPercent, setWasmPercent] = useState(0);
   const [isDownloadingWasm, setIsDownloadingWasm] = useState(false);
@@ -598,6 +601,15 @@ function NotebookLab() {
 
               <Button
                 variant="outline"
+                className="py-1 px-3 text-xs border-teal/60 bg-teal/10 text-teal font-semibold hover:bg-teal/20"
+                onClick={() => setCloudModalOpen(true)}
+                title="Import dataset from Google Drive or Microsoft OneDrive"
+              >
+                ☁️ Cloud Drive Import
+              </Button>
+
+              <Button
+                variant="outline"
                 className="py-1 px-3 text-xs border-teal/40 hover:bg-teal/10"
                 onClick={handleDownloadIpynb}
               >
@@ -902,6 +914,41 @@ function NotebookLab() {
             ➕ Add Markdown Cell
           </Button>
         </div>
+
+        {/* Cloud Drive Import Modal */}
+        <CloudDriveImportModal
+          isOpen={cloudModalOpen}
+          onClose={() => setCloudModalOpen(false)}
+          env={kernel}
+          onInsertCode={(newCode) => {
+            const newCell = {
+              id: `cell-${Date.now()}`,
+              type: "code" as const,
+              source: newCode.trim(),
+              outputs: [],
+              plots: [],
+              status: "idle" as const,
+              executionCount: null,
+            };
+            setCells((prev) => [newCell, ...prev]);
+            toast.success("Added cloud dataset cell to top of notebook!");
+          }}
+          onMountFile={async (fileName, content) => {
+            try {
+              if (kernel === "python") {
+                const py = await loadPy();
+                py.FS.writeFile(fileName, content);
+              } else {
+                const w = await loadR();
+                await w.FS.writeFile(fileName, content);
+              }
+              setUploadedFileName(fileName);
+              toast.success(`Mounted ${fileName} in virtual file system!`);
+            } catch (err: any) {
+              toast.error(`Could not mount file: ${err.message}`);
+            }
+          }}
+        />
       </Gate>
     </AppShell>
   );

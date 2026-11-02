@@ -12,6 +12,7 @@ import {
   type QueryResult,
 } from "@/lib/sql-engine";
 import { downloadFile } from "@/lib/code-export";
+import { CloudDriveImportModal } from "@/components/CloudDriveImportModal";
 
 export function SqlLab() {
   const [engineReady, setEngineReady] = useState(false);
@@ -27,6 +28,7 @@ export function SqlLab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
   const [isPending, startTransition] = useTransition();
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Initialize sql.js WebAssembly
@@ -280,6 +282,15 @@ export function SqlLab() {
               title="Upload your own CSV file as a SQL table"
             >
               📥 Import CSV Table
+            </Button>
+
+            <Button
+              variant="outline"
+              className="px-2.5 py-1 text-xs border-teal/60 bg-teal/10 text-teal font-semibold hover:bg-teal/20"
+              onClick={() => setCloudModalOpen(true)}
+              title="Import dataset directly from Google Drive or OneDrive link"
+            >
+              ☁️ Cloud Drive Import
             </Button>
 
             <Button
@@ -617,6 +628,30 @@ export function SqlLab() {
             )}
           </div>
         </div>
+
+        {/* Cloud Drive Import Modal */}
+        <CloudDriveImportModal
+          isOpen={cloudModalOpen}
+          onClose={() => setCloudModalOpen(false)}
+          env="sql"
+          onInsertCode={(newCode) => {
+            setQuery((prev) => (prev.trim() ? `${prev}\n${newCode}` : newCode));
+          }}
+          onImportSqlTable={(tableName, csvContent) => {
+            if (!session) return;
+            try {
+              const { rowsImported } = session.importCsv(tableName, csvContent);
+              setSchema(session.getSchema());
+              const previewSql = `SELECT * FROM "${tableName.replace(/[^a-zA-Z0-9_]/g, "_")}" LIMIT 15;`;
+              setQuery(previewSql);
+              const res = session.execute(previewSql);
+              setResult(res);
+              toast.success(`Imported cloud table "${tableName}" (${rowsImported} rows)`);
+            } catch (err: any) {
+              toast.error(`SQL import failed: ${err.message}`);
+            }
+          }}
+        />
       </Gate>
     </AppShell>
   );
