@@ -12,8 +12,9 @@ import {
   type AccountType,
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { INITIAL_RESOURCES } from "@/lib/resources-data";
 
-const ENVS: Env[] = ["python", "r", "vscode", "notebook"];
+const ENVS: Env[] = ["python", "r", "vscode", "notebook", "sql", "powerbi"];
 
 export function UserManagement() {
   const users = useStore((s) => s.users);
@@ -1304,9 +1305,78 @@ export function UserManagement() {
                 </div>
               </div>
 
+              {/* Granular Approvals: Courses, Manuals, & Tools */}
+              <div className="rounded-xl border border-teal/30 bg-teal/5 p-3.5 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-teal uppercase tracking-wide flex items-center gap-1.5">
+                    <span>🎯</span> Granular Approval: Course & Manual Access
+                  </h4>
+                  <span className="text-[11px] text-muted-foreground">
+                    A manual can cater for multiple courses
+                  </span>
+                </div>
+
+                {/* Approved Courses */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Approved Courses / Subjects (Comma-separated, e.g. GSY303 - Gas Technology):
+                  </label>
+                  <Input
+                    value={(editingUser.approvedCourses || [editingUser.course || ""]).join(", ")}
+                    onChange={(e) => {
+                      const courses = e.target.value
+                        .split(",")
+                        .map((c) => c.trim())
+                        .filter(Boolean);
+                      setEditingUser({ ...editingUser, approvedCourses: courses });
+                    }}
+                    placeholder="e.g. GSY303 - Gas Technology, PET301 - Petroleum Engineering"
+                    className="text-xs py-1.5 font-medium"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Approving a course automatically unlocks all practical manuals that cater for that course.
+                  </p>
+                </div>
+
+                {/* Approved Manuals Checkboxes */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Direct Approved Practical Manuals:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 border border-border rounded-lg bg-card">
+                    {INITIAL_RESOURCES.filter((r) => r.category === "Lab Manuals").map((res) => {
+                      const checked = (editingUser.approvedManuals || []).includes(res.id);
+                      return (
+                        <label
+                          key={res.id}
+                          className="flex items-start gap-2 p-1.5 rounded text-xs hover:bg-muted/40 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const curr = editingUser.approvedManuals || [];
+                              const updated = e.target.checked
+                                ? [...curr, res.id]
+                                : curr.filter((id) => id !== res.id);
+                              setEditingUser({ ...editingUser, approvedManuals: updated });
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div className="leading-tight">
+                            <span className="font-semibold text-primary">{res.title}</span>
+                            <div className="text-[10px] text-muted-foreground">{res.course}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* Lab Environments */}
-              <Field label="Accessible Environments">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+              <Field label="Accessible Tools & Coding Environments">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                   {ENVS.map((env) => (
                     <label
                       key={env}
@@ -1323,7 +1393,17 @@ export function UserManagement() {
                         }}
                       />
                       <span className="capitalize font-semibold">
-                        {env === "notebook" ? "📓 Notebook" : env}
+                        {env === "notebook"
+                          ? "📓 Notebook"
+                          : env === "python"
+                          ? "🐍 Python"
+                          : env === "sql"
+                          ? "🗄️ SQL Lab"
+                          : env === "powerbi"
+                          ? "📈 Power BI"
+                          : env === "vscode"
+                          ? "💻 VS Code"
+                          : "📊 R Lab"}
                       </span>
                     </label>
                   ))}

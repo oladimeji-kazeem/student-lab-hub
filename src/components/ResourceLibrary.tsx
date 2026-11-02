@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/lib/store";
 import {
   INITIAL_RESOURCES,
   parseCloudStorageUrl,
+  hasManualAccess,
   type LibraryResource,
   type ResourceCategory,
   type CloudProvider,
@@ -31,6 +32,7 @@ export function ResourceLibrary() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [providerFilter, setProviderFilter] = useState<string>("All");
+  const [courseFilter, setCourseFilter] = useState<string>("All");
   const [previewResource, setPreviewResource] = useState<LibraryResource | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -44,6 +46,7 @@ export function ResourceLibrary() {
   const [newProvider, setNewProvider] = useState<CloudProvider>("Google Drive");
   const [newUrl, setNewUrl] = useState("");
   const [newCourse, setNewCourse] = useState("");
+  const [newApplicableCourses, setNewApplicableCourses] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
   const isLecturerOrAdmin = user?.accountType === "lecturer" || user?.role === "admin";
@@ -56,6 +59,11 @@ export function ResourceLibrary() {
     }
 
     const parsed = parseCloudStorageUrl(newUrl);
+    const parsedCourses = newApplicableCourses
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+
     const newRes: LibraryResource = {
       id: `res-user-${Date.now()}`,
       title: newTitle.trim(),
@@ -64,7 +72,11 @@ export function ResourceLibrary() {
       fileType: newCategory === "Datasets" ? "CSV" : "PDF",
       fileSize: "Cloud Hosted",
       description: newDesc.trim() || "Uploaded instructional material from cloud storage.",
-      course: newCourse.trim() || "General Practice",
+      course: newCourse.trim() || (parsedCourses[0] ?? "General Practice"),
+      applicableCourses:
+        parsedCourses.length > 0
+          ? parsedCourses
+          : [newCourse.trim() || "General Practice"],
       authorOrDept: user?.name || "GardiaLab Instructor",
       shareUrl: newUrl.trim(),
       previewUrl: parsed.previewUrl,
@@ -88,6 +100,7 @@ export function ResourceLibrary() {
     setNewTitle("");
     setNewUrl("");
     setNewCourse("");
+    setNewApplicableCourses("");
     setNewDesc("");
   };
 
@@ -112,12 +125,21 @@ export function ResourceLibrary() {
       activeCategory === "All" || res.category === activeCategory;
     const matchesProvider =
       providerFilter === "All" || res.provider === providerFilter;
+    const matchesCourse =
+      courseFilter === "All" ||
+      res.course.toLowerCase().includes(courseFilter.toLowerCase()) ||
+      res.applicableCourses?.some((c) =>
+        c.toLowerCase().includes(courseFilter.toLowerCase()),
+      );
     const matchesSearch =
       !searchTerm ||
       res.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       res.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      res.course.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesProvider && matchesSearch;
+      res.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      res.applicableCourses?.some((c) =>
+        c.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    return matchesCategory && matchesProvider && matchesCourse && matchesSearch;
   });
 
   return (
@@ -191,7 +213,7 @@ export function ResourceLibrary() {
         </div>
 
         {activeCategory !== "CloudHelper" && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="text"
               placeholder="Search manuals, books..."
@@ -199,6 +221,19 @@ export function ResourceLibrary() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-lime"
             />
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground focus:outline-none"
+            >
+              <option value="All">All Courses</option>
+              <option value="GSY303">GSY303 - Gas Technology</option>
+              <option value="DSA301">DSA301 - Computing & Data Science</option>
+              <option value="CSC301">CSC301 - Database & SQL</option>
+              <option value="STA211">STA211 - Statistics & R</option>
+              <option value="DSA402">DSA402 - Power BI & Analytics</option>
+              <option value="PET301">PET301 - Petroleum Refining</option>
+            </select>
             <select
               value={providerFilter}
               onChange={(e) => setProviderFilter(e.target.value)}
@@ -215,78 +250,140 @@ export function ResourceLibrary() {
       {/* VIEW 1: REGULAR CATALOG VIEW */}
       {activeCategory !== "CloudHelper" && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredResources.map((res) => (
-            <Card key={res.id} className="flex flex-col justify-between p-4 shadow-sm border border-border">
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      res.category === "Lab Manuals"
-                        ? "bg-teal/15 text-teal"
-                        : res.category === "Textbooks"
-                        ? "bg-primary/15 text-primary"
-                        : "bg-warning/20 text-warning"
-                    }`}
+          {filteredResources.map((res) => {
+            const isApproved = hasManualAccess(user, res);
+            const coursesList = res.applicableCourses && res.applicableCourses.length > 0
+              ? res.applicableCourses
+              : [res.course];
+
+            return (
+              <Card
+                key={res.id}
+                className={cn(
+                  "flex flex-col justify-between p-4 shadow-sm border transition-all",
+                  isApproved
+                    ? "border-border hover:border-teal/40"
+                    : "border-warning/30 bg-card/60",
+                )}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        res.category === "Lab Manuals"
+                          ? "bg-teal/15 text-teal"
+                          : res.category === "Textbooks"
+                          ? "bg-primary/15 text-primary"
+                          : "bg-warning/20 text-warning"
+                      }`}
+                    >
+                      {res.category}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      {isApproved ? (
+                        <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success flex items-center gap-1">
+                          <span>✓</span> Approved
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold text-warning flex items-center gap-1">
+                          <span>🔒</span> Approval Required
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {res.provider === "Google Drive" ? "🟢" : "🔵"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h3 className="mt-2.5 font-sans text-sm font-bold text-foreground">
+                    {res.title}
+                  </h3>
+
+                  {/* Multi-Course Applicability Tags */}
+                  <div className="mt-2">
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Caters for Courses:
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {coursesList.map((c, i) => (
+                        <span
+                          key={i}
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                            c.includes("GSY303")
+                              ? "bg-teal/20 text-teal border border-teal/30"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="font-medium text-primary">{res.fileSize}</span>
+                    {res.requiredTool && (
+                      <>
+                        <span>·</span>
+                        <span className="capitalize text-teal font-medium">
+                          Tool: {res.requiredTool}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                    {res.description}
+                  </p>
+
+                  <div className="mt-3 text-[11px] text-muted-foreground/80">
+                    By: <span className="font-semibold text-foreground">{res.authorOrDept}</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-4 border-t border-border pt-3 flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    className="px-2.5 py-1 text-xs font-semibold hover:border-lime"
+                    onClick={() => setPreviewResource(res)}
                   >
-                    {res.category}
-                  </span>
+                    👁️ Read / Preview
+                  </Button>
 
-                  <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                    {res.provider === "Google Drive" ? "🟢 Google Drive" : "🔵 OneDrive"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {res.category === "Datasets" && (
+                      <Link to="/lab/sql">
+                        <Button variant="outline" className="px-2 py-1 text-xs">
+                          Open in SQL 🗄️
+                        </Button>
+                      </Link>
+                    )}
+
+                    {isApproved ? (
+                      <a
+                        href={res.downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center"
+                      >
+                        <Button variant="lime" className="px-2.5 py-1 text-xs font-bold">
+                          📥 Download
+                        </Button>
+                      </a>
+                    ) : (
+                      <Link to="/payment">
+                        <Button variant="outline" className="px-2 py-1 text-xs font-bold text-teal border-teal/40 hover:bg-teal/10">
+                          Subscribe / Request Access
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-
-                <h3 className="mt-2.5 font-sans text-sm font-bold text-foreground">
-                  {res.title}
-                </h3>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="font-medium text-primary">{res.course}</span>
-                  <span>·</span>
-                  <span>{res.fileSize}</span>
-                </div>
-
-                <p className="mt-2 text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                  {res.description}
-                </p>
-
-                <div className="mt-3 text-[11px] text-muted-foreground/80">
-                  By: <span className="font-semibold text-foreground">{res.authorOrDept}</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-4 border-t border-border pt-3 flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  className="px-2.5 py-1 text-xs font-semibold hover:border-lime"
-                  onClick={() => setPreviewResource(res)}
-                >
-                  👁️ Read / Preview
-                </Button>
-
-                <div className="flex items-center gap-1.5">
-                  {res.category === "Datasets" ? (
-                    <Link to="/lab/sql">
-                      <Button variant="outline" className="px-2 py-1 text-xs">
-                        Open in SQL 🗄️
-                      </Button>
-                    </Link>
-                  ) : null}
-
-                  <a
-                    href={res.downloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center"
-                  >
-                    <Button variant="lime" className="px-2.5 py-1 text-xs font-bold">
-                      📥 Download
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -537,16 +634,32 @@ export function ResourceLibrary() {
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                    Course / Subject Code:
+                    Primary Course Code:
                   </label>
                   <input
                     type="text"
                     value={newCourse}
                     onChange={(e) => setNewCourse(e.target.value)}
-                    placeholder="e.g. STA312 / Analytics"
+                    placeholder="e.g. GSY303 - Gas Technology"
                     className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-lime"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Applicable Courses (Comma-separated — caters for multiple courses):
+                </label>
+                <input
+                  type="text"
+                  value={newApplicableCourses}
+                  onChange={(e) => setNewApplicableCourses(e.target.value)}
+                  placeholder="e.g. GSY303 - Gas Technology, PET301 - Petroleum Refining, CHE302 - Process Thermodynamics"
+                  className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-lime"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  A manual can cater for more than one course. Subscribers with any of these approved courses will automatically unlock this manual.
+                </p>
               </div>
 
               <div>

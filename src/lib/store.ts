@@ -44,6 +44,8 @@ import {
   type NigeriaState,
   type Organization,
 } from "./nigerian-academic-data";
+import { hasManualAccess, type LibraryResource } from "./resources-data";
+export { hasManualAccess, type LibraryResource };
 
 export type Role = "user" | "admin";
 export type UserStatus = "pending" | "active" | "suspended";
@@ -69,6 +71,8 @@ export interface User {
   createdAt: string;
   accessUntil?: string | undefined;
   envs: Env[];
+  approvedCourses?: string[];
+  approvedManuals?: string[];
 }
 
 export interface Payment {
@@ -85,6 +89,11 @@ export interface Payment {
   createdAt: string;
   reviewedAt?: string;
   adminNote?: string | undefined;
+  courseCode?: string;
+  manualId?: string;
+  manualTitle?: string;
+  requestedTools?: Env[];
+  approvalScopes?: ("manual" | "course" | "tool")[];
 }
 
 export interface Plan {
@@ -1331,7 +1340,16 @@ export const actions = {
     });
   },
 
-  reviewPayment(id: string, approve: boolean, adminNote?: string) {
+  reviewPayment(
+    id: string,
+    approve: boolean,
+    adminNote?: string,
+    grantOptions?: {
+      approvedCourses?: string[];
+      approvedManuals?: string[];
+      envs?: Env[];
+    },
+  ) {
     set((s) => {
       const p = s.payments.find((x) => x.id === id)!;
       const plan = s.plans.find((x) => x.id === p.plan);
@@ -1342,22 +1360,55 @@ export const actions = {
               status: (approve ? "approved" : "rejected") as PaymentStatus,
               reviewedAt: new Date().toISOString(),
               adminNote,
+              approvalScopes: approve
+                ? [
+                    ...(grantOptions?.approvedCourses?.length || p.courseCode ? (["course"] as const) : []),
+                    ...(grantOptions?.approvedManuals?.length || p.manualId ? (["manual"] as const) : []),
+                    ...(grantOptions?.envs?.length || p.requestedTools?.length || plan ? (["tool"] as const) : []),
+                  ]
+                : undefined,
             }
           : x,
       );
       const users =
-        approve && plan
+        approve
           ? s.users.map((u) => {
               if (u.id !== p.userId) return u;
+              const days = plan?.days || 30;
               const base =
                 u.accessUntil && new Date(u.accessUntil) > new Date()
                   ? new Date(u.accessUntil).getTime()
                   : Date.now();
+
+              // Merge environments (by tool/environment approval)
+              const grantedEnvs =
+                grantOptions?.envs ||
+                p.requestedTools ||
+                plan?.envs ||
+                ["python", "r", "notebook", "sql", "powerbi"];
+              const finalEnvs = Array.from(new Set([...u.envs, ...grantedEnvs]));
+
+              // Merge approved courses (by course approval, e.g. GSY303 - Gas Technology)
+              const coursesToAdd =
+                grantOptions?.approvedCourses || (p.courseCode ? [p.courseCode] : []);
+              const finalCourses = Array.from(
+                new Set([...(u.approvedCourses || []), ...coursesToAdd]),
+              );
+
+              // Merge approved manuals (by manual approval)
+              const manualsToAdd =
+                grantOptions?.approvedManuals || (p.manualId ? [p.manualId] : []);
+              const finalManuals = Array.from(
+                new Set([...(u.approvedManuals || []), ...manualsToAdd]),
+              );
+
               return {
                 ...u,
                 status: "active" as UserStatus,
-                envs: Array.from(new Set([...u.envs, ...plan.envs])),
-                accessUntil: new Date(base + plan.days * 864e5).toISOString(),
+                envs: finalEnvs,
+                approvedCourses: finalCourses,
+                approvedManuals: finalManuals,
+                accessUntil: new Date(base + days * 864e5).toISOString(),
               };
             })
           : s.users;

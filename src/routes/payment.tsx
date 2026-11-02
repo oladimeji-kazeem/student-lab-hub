@@ -1,21 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell, Card, Badge, Button, Input, Field } from "@/components/ui-kit";
-import { actions, useCurrentUser, useStore, formatNaira } from "@/lib/store";
+import { actions, useCurrentUser, useStore, formatNaira, type Env } from "@/lib/store";
 import { NIGERIAN_BANKS } from "@/lib/nigerian-academic-data";
+import { INITIAL_RESOURCES } from "@/lib/resources-data";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
     meta: [
-      { title: "Payments — GardiaLab" },
+      { title: "Payments & Course Subscription — GardiaLab" },
       {
         name: "description",
-        content: "Bank transfer details and payment logging for GardiaLab access.",
+        content: "Bank transfer details and payment logging for GardiaLab course, manual, and tool access.",
       },
-      { property: "og:title", content: "Payments — GardiaLab" },
+      { property: "og:title", content: "Payments & Course Subscription — GardiaLab" },
       {
         property: "og:description",
-        content: "Log your Nigerian bank transfer to activate your GardiaLab coding environment.",
+        content: "Subscribe and unlock your practical manual, course, and coding environment on GardiaLab.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -23,6 +24,17 @@ export const Route = createFileRoute("/payment")({
   }),
   component: PaymentPage,
 });
+
+const POPULAR_COURSES = [
+  "GSY303 - Gas Technology",
+  "DSA301 - Computing Lab & Data Science",
+  "CSC301 - Database Systems & SQL Server",
+  "STA211 - Statistics & Econometrics Lab",
+  "DSA402 - Business Intelligence & Power BI",
+  "PET301 - Petroleum Engineering & Gas Refining",
+  "CHE302 - Chemical Process Engineering",
+  "OTHER",
+];
 
 function PaymentPage() {
   const user = useCurrentUser();
@@ -32,6 +44,14 @@ function PaymentPage() {
 
   const [selectedBank, setSelectedBank] = useState(NIGERIAN_BANKS[0]);
   const [customBank, setCustomBank] = useState("");
+
+  const [courseChoice, setCourseChoice] = useState<string>(
+    user?.course || "GSY303 - Gas Technology",
+  );
+  const [customCourse, setCustomCourse] = useState("");
+
+  const [selectedManualId, setSelectedManualId] = useState<string>("all");
+  const [selectedToolScope, setSelectedToolScope] = useState<string>("all");
 
   const [f, setF] = useState({
     plan: "",
@@ -75,6 +95,31 @@ function PaymentPage() {
     const autoRef = `TX-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const cleanRef = f.reference.trim() || autoRef;
 
+    const effectiveCourse =
+      courseChoice === "OTHER"
+        ? customCourse.trim() || "General Engineering / Data Science"
+        : courseChoice;
+
+    const manualObj = INITIAL_RESOURCES.find((r) => r.id === selectedManualId);
+    const effectiveManualTitle =
+      selectedManualId === "all"
+        ? "All Applicable Course Manuals & Datasets"
+        : manualObj?.title || selectedManualId;
+
+    let requestedTools: Env[] = [
+      "python",
+      "r",
+      "vscode",
+      "notebook",
+      "sql",
+      "powerbi",
+    ];
+    if (selectedToolScope === "python") requestedTools = ["python", "notebook"];
+    else if (selectedToolScope === "sql") requestedTools = ["sql"];
+    else if (selectedToolScope === "powerbi") requestedTools = ["powerbi"];
+    else if (selectedToolScope === "r") requestedTools = ["r", "notebook"];
+    else if (selectedToolScope === "manual_only") requestedTools = [];
+
     actions.submitPayment({
       plan: plan!.id,
       bank: effectiveBank,
@@ -83,7 +128,12 @@ function PaymentPage() {
       payerName: f.payerName.trim() || user?.name || "Student",
       amount: Number(f.amount || plan!.price),
       note: f.note,
+      courseCode: effectiveCourse,
+      manualId: selectedManualId === "all" ? undefined : selectedManualId,
+      manualTitle: effectiveManualTitle,
+      requestedTools,
     });
+
     setF({
       plan: "",
       reference: "",
@@ -96,7 +146,7 @@ function PaymentPage() {
   };
 
   return (
-    <AppShell title="Payments">
+    <AppShell title="Payments & Subscriptions">
       <div className="grid gap-5 lg:grid-cols-5">
         {/* Step 1: Official Nigerian Bank Transfer Details */}
         <Card className="lg:col-span-2 bg-sidebar-grad text-primary-foreground">
@@ -173,7 +223,97 @@ function PaymentPage() {
           )}
 
           <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Choose Plan">
+            {/* Course / Subject Specification */}
+            <div className="sm:col-span-2 rounded-xl border border-teal/30 bg-teal/5 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-teal flex items-center gap-1.5">
+                  <span>🎯</span> Course / Subject & Manual Selection
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  A manual caters for multiple courses
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Target Course / Subject Code & Title">
+                  <select
+                    value={courseChoice}
+                    onChange={(e) => setCourseChoice(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                  >
+                    {POPULAR_COURSES.map((c) => (
+                      <option key={c} value={c}>
+                        {c === "OTHER" ? "✏️ Other (Specify Custom Course...)" : c}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {courseChoice === "OTHER" ? (
+                  <Field label="Specify Course Code & Title">
+                    <Input
+                      required
+                      placeholder="e.g. GSY303 - Gas Technology"
+                      value={customCourse}
+                      onChange={(e) => setCustomCourse(e.target.value)}
+                    />
+                  </Field>
+                ) : (
+                  <Field label="Associated Practical Lab Manual">
+                    <select
+                      value={selectedManualId}
+                      onChange={(e) => setSelectedManualId(e.target.value)}
+                      className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="all">📚 All Applicable Course Manuals & Datasets</option>
+                      {INITIAL_RESOURCES.filter((r) => r.category === "Lab Manuals").map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.title} ({r.course})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+
+                {courseChoice === "OTHER" && (
+                  <div className="sm:col-span-2">
+                    <Field label="Associated Practical Lab Manual">
+                      <select
+                        value={selectedManualId}
+                        onChange={(e) => setSelectedManualId(e.target.value)}
+                        className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="all">📚 All Applicable Course Manuals & Datasets</option>
+                        {INITIAL_RESOURCES.filter((r) => r.category === "Lab Manuals").map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.title} ({r.course})
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+              </div>
+
+              <Field label="Primary Coding Tool / Environment Needed">
+                <select
+                  value={selectedToolScope}
+                  onChange={(e) => setSelectedToolScope(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="all">
+                    ⚡ Full Platform Suite (Python, R, SQL, Power BI, Notebook, VS Code)
+                  </option>
+                  <option value="python">🐍 Python Lab & Interactive Notebooks</option>
+                  <option value="sql">🗄️ SQL Server & Relational Database Lab</option>
+                  <option value="powerbi">📈 Power BI Studio & Business Analytics Lab</option>
+                  <option value="r">📊 R Statistical Computing Lab</option>
+                  <option value="manual_only">📖 Course Practical Manual & Textbook Access Only</option>
+                </select>
+              </Field>
+            </div>
+
+            <Field label="Choose Access Duration / Plan">
               <select
                 value={plan?.id}
                 onChange={up("plan")}
@@ -291,7 +431,8 @@ function PaymentPage() {
               <tr>
                 <th className="py-2.5">Date</th>
                 <th>Reference</th>
-                <th>Plan</th>
+                <th>Course / Subject</th>
+                <th>Manual & Tools</th>
                 <th>Sender Bank</th>
                 <th>Amount (₦)</th>
                 <th>Status</th>
@@ -301,9 +442,26 @@ function PaymentPage() {
             <tbody>
               {mine.map((p) => (
                 <tr key={p.id} className="border-t border-border hover:bg-muted/40 transition">
-                  <td className="py-2.5 whitespace-nowrap">{p.paidOn}</td>
+                  <td className="py-2.5 whitespace-nowrap text-xs">{p.paidOn}</td>
                   <td className="font-mono text-xs font-semibold">{p.reference}</td>
-                  <td>{plans.find((x) => x.id === p.plan)?.name ?? p.plan}</td>
+                  <td className="text-xs">
+                    <span className="font-semibold text-primary">
+                      {p.courseCode || user.course || "General"}
+                    </span>
+                    <div className="text-[10px] text-muted-foreground">
+                      Plan: {plans.find((x) => x.id === p.plan)?.name ?? p.plan}
+                    </div>
+                  </td>
+                  <td className="text-xs">
+                    <div className="font-medium text-foreground line-clamp-1">
+                      {p.manualTitle || "Course Manuals & Materials"}
+                    </div>
+                    {p.requestedTools && p.requestedTools.length > 0 && (
+                      <div className="text-[10px] text-teal font-medium mt-0.5">
+                        Tools: {p.requestedTools.join(", ")}
+                      </div>
+                    )}
+                  </td>
                   <td className="text-muted-foreground text-xs">{p.bank || "Bank Transfer"}</td>
                   <td className="font-semibold text-primary">{formatNaira(p.amount)}</td>
                   <td>
@@ -314,7 +472,7 @@ function PaymentPage() {
               ))}
               {!mine.length && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-6 text-center text-muted-foreground">
                     No payment records logged yet. Make a transfer and submit above to begin.
                   </td>
                 </tr>

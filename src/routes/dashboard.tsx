@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, Card, Badge, Button } from "@/components/ui-kit";
 import { useCurrentUser, useStore, hasAccess } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
+import { INITIAL_RESOURCES, hasManualAccess } from "@/lib/resources-data";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -175,6 +177,119 @@ function Dashboard() {
           </Link>
         </Card>
       )}
+
+      {/* User's Approved Courses, Practical Manuals & Tools */}
+      <Card className="mt-6 border-teal/40 bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-teal flex items-center gap-1.5">
+              <span>🎯</span> Course Approvals & Laboratory Materials
+            </div>
+            <h3 className="mt-0.5 text-base font-bold text-primary">
+              Your Enrolled Courses & Approved Practical Manuals
+            </h3>
+          </div>
+          <Link to="/resources">
+            <Button variant="outline" className="text-xs py-1 px-3 border-teal/40 text-teal hover:bg-teal/10">
+              Browse All Manuals ➔
+            </Button>
+          </Link>
+        </div>
+
+        {/* 1. Approved Courses */}
+        <div className="mt-3.5 space-y-2">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Approved Courses / Subjects:
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[...(user.approvedCourses || []), ...(user.course ? [user.course] : [])].length > 0 ? (
+              Array.from(new Set([...(user.approvedCourses || []), ...(user.course ? [user.course] : [])])).map((c, i) => (
+                <span
+                  key={i}
+                  className="rounded-lg bg-teal/15 border border-teal/30 px-3 py-1 text-xs font-bold text-teal flex items-center gap-1.5"
+                >
+                  <span>✓</span> {c}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground italic">
+                No individual course approval recorded. Submit payment with your course code (e.g. GSY303 - Gas Technology).
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 2. Unlocked Practical Manuals that cater for these courses */}
+        <div className="mt-4 pt-3.5 border-t border-border/60">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center justify-between">
+            <span>Available Practical Lab Manuals (Multi-Course Matched):</span>
+            <span className="text-[11px] text-teal font-medium">
+              A manual caters for multiple courses
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {INITIAL_RESOURCES.filter((r) => r.category === "Lab Manuals").map((res) => {
+              const unlocked = hasManualAccess(user, res);
+              return (
+                <div
+                  key={res.id}
+                  className={cn(
+                    "rounded-xl border p-3 flex flex-col justify-between text-xs transition",
+                    unlocked
+                      ? "border-teal/30 bg-card hover:border-teal"
+                      : "border-border/50 bg-muted/20 opacity-75",
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {res.fileSize}
+                      </span>
+                      {unlocked ? (
+                        <span className="rounded-full bg-success/15 px-2 py-0.2 text-[10px] font-bold text-success flex items-center gap-1">
+                          <span>✓</span> Unlocked
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-warning/20 px-2 py-0.2 text-[10px] font-bold text-warning flex items-center gap-1">
+                          <span>🔒</span> Approval Needed
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-bold text-foreground line-clamp-1">{res.title}</div>
+                    <div className="text-[10px] text-teal font-semibold mt-1">
+                      Caters for: {(res.applicableCourses || [res.course]).join(", ")}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between gap-2">
+                    {unlocked ? (
+                      <>
+                        <Link to="/resources">
+                          <Button variant="outline" className="text-[11px] py-1 px-2">
+                            👁️ Read Manual
+                          </Button>
+                        </Link>
+                        <a href={res.downloadUrl} target="_blank" rel="noreferrer">
+                          <Button variant="lime" className="text-[11px] py-1 px-2 font-bold">
+                            📥 PDF
+                          </Button>
+                        </a>
+                      </>
+                    ) : (
+                      <Link to="/payment" className="w-full">
+                        <Button variant="outline" className="w-full text-[11px] py-1 px-2 text-teal border-teal/40 hover:bg-teal/10">
+                          Request Approval
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal/30 bg-teal/5 p-4 shadow-sm">
         <div className="flex items-center gap-3">

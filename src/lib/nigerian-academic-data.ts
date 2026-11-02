@@ -477,6 +477,8 @@ export const COURSES_OF_STUDY: Course[] = [
   { id: "course-mech", name: "Mechanical Engineering", faculty: "Engineering" },
   { id: "course-civil", name: "Civil Engineering", faculty: "Engineering" },
   { id: "course-chem-eng", name: "Chemical Engineering", faculty: "Engineering" },
+  { id: "course-pet-gas", name: "Petroleum & Gas Engineering", faculty: "Engineering" },
+  { id: "course-gas-tech", name: "GSY303 - Gas Technology", faculty: "Engineering" },
   { id: "course-mechatronics", name: "Mechatronics Engineering", faculty: "Engineering" },
   { id: "course-phys", name: "Physics / Industrial Physics", faculty: "Sciences & Computing" },
   { id: "course-chem", name: "Chemistry / Industrial Chemistry", faculty: "Sciences & Computing" },

@@ -31,6 +31,7 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { WebAnalyticsModule } from "@/components/admin/WebAnalyticsModule";
 import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
 import { EmailNotificationsModule } from "@/components/admin/EmailNotificationsModule";
+import { INITIAL_RESOURCES } from "@/lib/resources-data";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -1370,6 +1371,19 @@ function Payments() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>("Just now");
 
+  // Granular Scope Approval Modal State
+  const [customizingPayment, setCustomizingPayment] = useState<any | null>(null);
+  const [approvalCourse, setApprovalCourse] = useState("");
+  const [approvalManuals, setApprovalManuals] = useState<string[]>([]);
+  const [approvalEnvs, setApprovalEnvs] = useState<Env[]>([
+    "python",
+    "r",
+    "vscode",
+    "notebook",
+    "sql",
+    "powerbi",
+  ]);
+
   const syncData = async () => {
     setIsSyncing(true);
     await actions.refreshFromSupabase();
@@ -1382,6 +1396,17 @@ function Payments() {
     syncData();
   }, []);
 
+  const openCustomModal = (p: any, u: any) => {
+    setCustomizingPayment(p);
+    setApprovalCourse(p.courseCode || u?.course || "GSY303 - Gas Technology");
+    setApprovalManuals(p.manualId ? [p.manualId] : []);
+    setApprovalEnvs(
+      p.requestedTools && p.requestedTools.length > 0
+        ? p.requestedTools
+        : ["python", "r", "vscode", "notebook", "sql", "powerbi"],
+    );
+  };
+
   const list = payments.filter((p) => {
     if (filter !== "all" && p.status !== filter) return false;
     if (!q.trim()) return true;
@@ -1391,6 +1416,8 @@ function Payments() {
       (p.reference || "").toLowerCase().includes(query) ||
       (p.payerName || "").toLowerCase().includes(query) ||
       (p.bank || "").toLowerCase().includes(query) ||
+      (p.courseCode || "").toLowerCase().includes(query) ||
+      (p.manualTitle || "").toLowerCase().includes(query) ||
       (u?.name || "").toLowerCase().includes(query) ||
       (u?.email || "").toLowerCase().includes(query) ||
       (p.userId || "").toLowerCase().includes(query)
@@ -1439,7 +1466,7 @@ function Payments() {
           </Button>
 
           <Input
-            placeholder="Search reference, payer name, or email..."
+            placeholder="Search ref, course, manual, student..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="max-w-xs text-xs"
@@ -1448,16 +1475,17 @@ function Payments() {
       </div>
 
       <div className="mt-4 overflow-x-auto w-full">
-        <table className="w-full text-sm min-w-[650px]">
+        <table className="w-full text-sm min-w-[750px]">
           <thead className="text-left text-xs uppercase text-muted-foreground border-b border-border">
             <tr>
               <th className="py-2.5">User / Student</th>
-              <th>Plan</th>
-              <th>Amount (₦)</th>
-              <th>Bank / Reference</th>
+              <th>Course / Subject</th>
+              <th>Manual & Tools</th>
+              <th>Plan & Amount</th>
+              <th>Bank / Ref</th>
               <th>Paid on</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Approval Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1497,12 +1525,30 @@ function Payments() {
                     )}
                   </td>
                   <td>
-                    <span className="font-medium">{plan?.name ?? p.plan}</span>
+                    <div className="font-semibold text-foreground text-xs">
+                      {p.courseCode || u?.course || "GSY303 - Gas Technology"}
+                    </div>
+                    <span className="text-[10px] text-teal font-medium">
+                      Multi-course manual support
+                    </span>
+                  </td>
+                  <td>
+                    <div className="text-xs font-medium text-primary line-clamp-1">
+                      {p.manualTitle || "All Course Manuals"}
+                    </div>
+                    {p.requestedTools && p.requestedTools.length > 0 && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        Tools: {p.requestedTools.join(", ")}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <div className="font-semibold text-primary">{formatNaira(p.amount)}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {plan?.name ?? p.plan}
+                    </div>
                     {mismatch && (
-                      <div className="text-xs text-destructive">
+                      <div className="text-[10px] text-destructive">
                         Below {formatNaira(plan.price)}
                       </div>
                     )}
@@ -1520,7 +1566,7 @@ function Payments() {
                       <div className="mt-1 text-xs text-muted-foreground">{p.adminNote}</div>
                     )}
                   </td>
-                  <td className="min-w-48">
+                  <td className="min-w-56">
                     {p.status === "pending" ? (
                       <div className="space-y-2">
                         <Input
@@ -1529,20 +1575,29 @@ function Payments() {
                           onChange={(e) => setNotes({ ...notes, [p.id]: e.target.value })}
                           className="text-xs py-1"
                         />
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           <Button
                             variant="lime"
-                            className="py-1 px-3 text-xs flex items-center gap-1 font-semibold"
+                            className="py-1 px-2.5 text-xs flex items-center gap-1 font-semibold"
                             onClick={async () => {
                               actions.reviewPayment(p.id, true, notes[p.id]);
                               await actions.refreshFromSupabase();
                             }}
+                            title="Approve Course, Manual, and Tools in one click"
                           >
-                            ✓ Approve
+                            ✓ Quick Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="py-1 px-2 text-xs flex items-center gap-1 text-teal border-teal/40 hover:bg-teal/10 font-medium"
+                            onClick={() => openCustomModal(p, u)}
+                            title="Configure manual, course, or tool approval"
+                          >
+                            ⚙️ Scope
                           </Button>
                           <Button
                             variant="danger"
-                            className="py-1 px-3 text-xs flex items-center gap-1"
+                            className="py-1 px-2 text-xs flex items-center gap-1"
                             onClick={async () => {
                               actions.reviewPayment(
                                 p.id,
@@ -1557,9 +1612,14 @@ function Payments() {
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">
-                        Reviewed {p.reviewedAt ? new Date(p.reviewedAt).toLocaleDateString() : ""}
-                      </span>
+                      <div className="text-xs text-muted-foreground">
+                        <div>Reviewed: {p.reviewedAt ? new Date(p.reviewedAt).toLocaleDateString() : "Yes"}</div>
+                        {p.approvalScopes && p.approvalScopes.length > 0 && (
+                          <div className="text-[10px] text-teal font-semibold mt-0.5">
+                            Approved by: {p.approvalScopes.join(", ")}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -1567,7 +1627,7 @@ function Payments() {
             })}
             {!list.length && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="py-8 text-center text-muted-foreground">
                   No payment records matching filter.
                 </td>
               </tr>
@@ -1575,6 +1635,202 @@ function Payments() {
           </tbody>
         </table>
       </div>
+
+      {/* GRANULAR APPROVAL MODAL (MANUAL / COURSE / TOOL) */}
+      {customizingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/60 p-4 backdrop-blur-sm overflow-y-auto">
+          <Card className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-5 bg-card border-teal shadow-2xl fade-up space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div>
+                <h3 className="font-bold text-primary text-base">
+                  Granular Approval Configuration
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Ref: <span className="font-mono text-foreground font-semibold">{customizingPayment.reference}</span> · Payer: {customizingPayment.payerName}
+                </p>
+              </div>
+              <button
+                onClick={() => setCustomizingPayment(null)}
+                className="text-muted-foreground hover:text-foreground p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex flex-wrap items-center gap-2 text-xs bg-muted/40 p-2 rounded-lg">
+              <span className="font-semibold text-muted-foreground">Quick Presets:</span>
+              <button
+                type="button"
+                className="rounded bg-teal/20 text-teal px-2 py-0.5 font-bold hover:bg-teal/30"
+                onClick={() => {
+                  setApprovalEnvs(["python", "r", "vscode", "notebook", "sql", "powerbi"]);
+                  if (customizingPayment.manualId) setApprovalManuals([customizingPayment.manualId]);
+                }}
+              >
+                Full Suite (Course + Manual + All Tools)
+              </button>
+              <button
+                type="button"
+                className="rounded bg-primary/15 text-primary px-2 py-0.5 font-bold hover:bg-primary/25"
+                onClick={() => {
+                  setApprovalEnvs([]);
+                  if (customizingPayment.manualId) setApprovalManuals([customizingPayment.manualId]);
+                }}
+              >
+                Manual & Course Only (No Coding Tools)
+              </button>
+              <button
+                type="button"
+                className="rounded bg-warning/20 text-warning px-2 py-0.5 font-bold hover:bg-warning/30"
+                onClick={() => {
+                  setApprovalManuals([]);
+                }}
+              >
+                Coding Tools Only
+              </button>
+            </div>
+
+            {/* 1. Course Approval */}
+            <div className="rounded-xl border border-teal/30 bg-teal/5 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-teal uppercase tracking-wide">
+                  1. Approve by Course / Subject
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Unlocks all manuals catering for this course
+                </span>
+              </div>
+              <Input
+                value={approvalCourse}
+                onChange={(e) => setApprovalCourse(e.target.value)}
+                placeholder="e.g. GSY303 - Gas Technology"
+                className="text-xs py-1.5 font-medium"
+              />
+            </div>
+
+            {/* 2. Manual Approval */}
+            <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary uppercase tracking-wide">
+                  2. Approve by Specific Manual
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Direct manual unlocking
+                </span>
+              </div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {INITIAL_RESOURCES.filter((r) => r.category === "Lab Manuals").map((res) => {
+                  const checked = approvalManuals.includes(res.id);
+                  return (
+                    <label
+                      key={res.id}
+                      className="flex items-start gap-2 p-1.5 rounded text-xs hover:bg-muted/40 cursor-pointer border border-border/50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setApprovalManuals(
+                            e.target.checked
+                              ? [...approvalManuals, res.id]
+                              : approvalManuals.filter((id) => id !== res.id),
+                          );
+                        }}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <div className="font-semibold text-foreground">{res.title}</div>
+                        <div className="text-[10px] text-muted-foreground">{res.course}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Tool / Environment Approval */}
+            <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+              <span className="text-xs font-bold text-primary uppercase tracking-wide block">
+                3. Approve by Tool / Environment
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: "python" as const, label: "🐍 Python Lab" },
+                  { id: "r" as const, label: "📊 R Lab" },
+                  { id: "sql" as const, label: "🗄️ SQL Server" },
+                  { id: "powerbi" as const, label: "📈 Power BI" },
+                  { id: "notebook" as const, label: "📓 Notebook" },
+                  { id: "vscode" as const, label: "💻 VS Code" },
+                ].map((tool) => (
+                  <label
+                    key={tool.id}
+                    className="flex items-center gap-2 rounded-lg border border-border bg-card p-2 text-xs cursor-pointer hover:bg-muted/40"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={approvalEnvs.includes(tool.id)}
+                      onChange={(e) => {
+                        setApprovalEnvs(
+                          e.target.checked
+                            ? [...approvalEnvs, tool.id]
+                            : approvalEnvs.filter((id) => id !== tool.id),
+                        );
+                      }}
+                    />
+                    <span className="font-semibold text-foreground">{tool.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Admin Note */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Admin Note / Audit Remark (Optional):
+              </label>
+              <Input
+                placeholder="e.g. Approved for GSY303 course manual & Python environment"
+                value={notes[customizingPayment.id] ?? ""}
+                onChange={(e) =>
+                  setNotes({ ...notes, [customizingPayment.id]: e.target.value })
+                }
+                className="text-xs py-1.5"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                className="text-xs py-1.5 px-3"
+                onClick={() => setCustomizingPayment(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="lime"
+                className="text-xs py-1.5 px-4 font-bold"
+                onClick={async () => {
+                  actions.reviewPayment(
+                    customizingPayment.id,
+                    true,
+                    notes[customizingPayment.id] || "Approved with custom scope",
+                    {
+                      approvedCourses: [approvalCourse].filter(Boolean),
+                      approvedManuals: approvalManuals,
+                      envs: approvalEnvs,
+                    },
+                  );
+                  await actions.refreshFromSupabase();
+                  setCustomizingPayment(null);
+                }}
+              >
+                ✓ Grant Configured Scope Approval
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </Card>
   );
 }
