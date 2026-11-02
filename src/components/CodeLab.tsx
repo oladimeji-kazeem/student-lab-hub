@@ -137,7 +137,7 @@ function extractPipMagics(code: string): { cleanedCode: string; pipPackages: str
         .map((t) => t.trim())
         .filter((t) => t && !t.startsWith("-"));
       pipPackages.push(...tokens);
-      return `# [e-Lab micropip] ${line.trim()}`;
+      return `# [GardiaLab micropip] ${line.trim()}`;
     }
     return line;
   });

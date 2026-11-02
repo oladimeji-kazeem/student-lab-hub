@@ -6,9 +6,9 @@ import { actions } from "@/lib/store";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign in — e-Lab" },
-      { name: "description", content: "Sign in to your e-Lab coding environment." },
-      { property: "og:title", content: "Sign in — e-Lab" },
+      { title: "Sign in — GardiaLab" },
+      { name: "description", content: "Sign in to your GardiaLab coding environment." },
+      { property: "og:title", content: "Sign in — GardiaLab" },
       { property: "og:description", content: "Access your online Python, R, and VS Code labs." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

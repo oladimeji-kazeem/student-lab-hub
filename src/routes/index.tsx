@@ -5,20 +5,20 @@ import { useStore, formatNaira } from "@/lib/store";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "e-Lab — Run Python, R & VS Code in your browser" },
+      { title: "GardiaLab — Run Python, R, SQL & Power BI in your browser" },
       {
         name: "description",
         content:
-          "e-Lab empowers Nigerian students, lecturers, and researchers to run Python, R, and VS Code coding labs online with zero setup.",
+          "GardiaLab empowers students, lecturers, and data analysts to run Python, R, SQL Server, Power BI, and VS Code coding labs online with zero setup.",
       },
       {
         property: "og:title",
-        content: "e-Lab — Cloud Computing & Coding Labs for Nigeria",
+        content: "GardiaLab — Cloud Computing & Data Labs",
       },
       {
         property: "og:description",
         content:
-          "Python, R, Jupyter notebooks and VS Code online in your browser. Tailored for Nigerian universities, colleges, and professionals.",
+          "Python, R, SQL Server, Power BI, and VS Code online in your browser. Tailored for higher institutions, colleges, and professionals.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -168,7 +168,7 @@ print(f"mean={data.mean():.3f}")
       </section>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © 2026 e-Lab. Empowering Nigerian education and research with instant cloud computing.
+        © 2026 GardiaLab (AI-Gardia). Empowering education, research, and analytics with instant cloud computing.
       </footer>
     </div>
   );

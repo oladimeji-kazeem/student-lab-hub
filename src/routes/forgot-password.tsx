@@ -6,8 +6,8 @@ import { actions } from "@/lib/store";
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
-      { title: "Reset Password — e-Lab" },
-      { name: "description", content: "Reset your e-Lab account password." },
+      { title: "Reset Password — GardiaLab" },
+      { name: "description", content: "Reset your GardiaLab account password." },
     ],
   }),
   component: ForgotPasswordPage,

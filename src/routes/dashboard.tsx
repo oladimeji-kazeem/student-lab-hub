@@ -6,12 +6,12 @@ import { LabAssessmentModule } from "@/components/admin/LabAssessmentModule";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — e-Lab" },
+      { title: "Dashboard — GardiaLab" },
       {
         name: "description",
-        content: "Your e-Lab overview: access status, payments and labs.",
+        content: "Your GardiaLab overview: access status, payments and labs.",
       },
-      { property: "og:title", content: "Dashboard — e-Lab" },
+      { property: "og:title", content: "Dashboard — GardiaLab" },
       { property: "og:description", content: "Manage your coding lab access." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -353,7 +353,7 @@ plt.show()
         id: "nb-ng-1",
         type: "markdown",
         content:
-          "# Nigerian Campus Data Science: CGPA Regression & K-Means Clustering\nAnalyze student study hours and e-Lab coding activity against Nigeria's **5.00 CGPA scale** using `pandas`, `LinearRegression`, and `KMeans`.",
+          "# Nigerian Campus Data Science: CGPA Regression & K-Means Clustering\nAnalyze student study hours and GardiaLab coding activity against Nigeria's **5.00 CGPA scale** using `pandas`, `LinearRegression`, and `KMeans`.",
       },
       {
         id: "nb-ng-2",

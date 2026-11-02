@@ -79,11 +79,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "e-Lab — Cloud Computing & Coding Labs" },
+      { title: "GardiaLab — Cloud Computing & Data Labs" },
       {
         name: "description",
         content:
-          "e-Lab — Cloud Computing & Coding Labs for Nigerian Higher Institutions, Researchers & Professionals.",
+          "GardiaLab — Cloud Computing & Data Analytics Labs for Higher Institutions, Researchers & Professionals.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

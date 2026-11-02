@@ -562,19 +562,19 @@ abline(model, col = "#071E5D", lwd = 2)
     {
       id: uid(),
       at: d(-30),
-      actor: "e-Lab Admin",
+      actor: "GardiaLab Admin",
       action: "Approved payment GTB-88213 for Amara Okafor",
     },
     {
       id: uid(),
       at: d(-19),
-      actor: "e-Lab Admin",
+      actor: "GardiaLab Admin",
       action: "Approved payment ZN-90231 for Babajide Adebayo",
     },
   ],
   settings: {
     bankName: "Guaranty Trust Bank (GTBank)",
-    accountName: "e-Lab Technologies Ltd",
+    accountName: "GardiaLab Technologies Ltd",
     accountNumber: "0123456789",
     instructions:
       "Please include your Full Name or Registration Reference in the transfer narration.",

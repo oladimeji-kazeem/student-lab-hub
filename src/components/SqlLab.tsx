@@ -454,7 +454,7 @@ export function SqlLab() {
                 </div>
 
                 <div className="rounded-lg bg-lime/10 p-2 text-[11px] text-lime-dark dark:text-lime">
-                  💡 <strong>Tip for Students:</strong> e-Lab automatically recognizes both
+                  💡 <strong>Tip for Students:</strong> GardiaLab automatically recognizes both
                   standard ANSI SQL and SQL Server T-SQL syntax.
                 </div>
               </div>

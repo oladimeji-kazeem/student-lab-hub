@@ -233,7 +233,7 @@ export async function downloadRWorkspace(
   }
 
   // Fallback: Package the R script and comments into an R archive wrapper with .RData / .rda extension
-  const header = `# R Workspace Image (${format.toUpperCase()})\n# Created with e-Lab\n# Load in R using: source() or load()\n\n`;
+  const header = `# R Workspace Image (${format.toUpperCase()})\n# Created with GardiaLab\n# Load in R using: source() or load()\n\n`;
   const content = header + code;
   downloadFile(name, content, "application/octet-stream");
   return { success: true, message: "Exported workspace file." };

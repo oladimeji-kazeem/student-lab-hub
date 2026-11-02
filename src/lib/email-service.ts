@@ -29,12 +29,12 @@ export interface EmailNotificationRecord {
   created_at: string;
 }
 
-const BRAND_NAME = "e-Lab";
+const BRAND_NAME = "GardiaLab";
 const PLATFORM_URL = "https://ai-gardia.com";
 const SUPPORT_EMAIL = "info@ai-gardia.com";
 const ADMIN_COPY_EMAIL = "olakazeem@gmail.com";
 
-// Base HTML wrapper with clean, professional corporate e-Lab styling
+// Base HTML wrapper with clean, professional corporate GardiaLab styling
 function wrapEmailTemplate(title: string, bodyContent: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -70,16 +70,16 @@ function wrapEmailTemplate(title: string, bodyContent: string): string {
 <body>
   <div class="wrapper">
     <div class="header">
-      <div class="brand-title">e-Lab</div>
+      <div class="brand-title">GardiaLab</div>
       <div class="brand-sub">Cloud Scientific Computing & AI Laboratory</div>
     </div>
     <div class="content">
       ${bodyContent}
     </div>
     <div class="footer">
-      <p>This is an automated notification from <strong>e-Lab</strong> (<a href="${PLATFORM_URL}">ai-gardia.com</a>).</p>
+      <p>This is an automated notification from <strong>GardiaLab</strong> (<a href="${PLATFORM_URL}">ai-gardia.com</a>).</p>
       <p>For technical support or billing inquiries, reach us at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>.</p>
-      <p>&copy; ${new Date().getFullYear()} e-Lab Technologies. All rights reserved.</p>
+      <p>&copy; ${new Date().getFullYear()} GardiaLab Technologies. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -101,13 +101,13 @@ export function buildWelcomeEmail(user: {
   const affiliation = user.institution || user.employer || "Scientific Computing Network";
   const roleDisplay = user.currentRole || user.accountType || "Researcher / Student";
 
-  const subject = `Welcome to e-Lab, ${user.name.split(" ")[0]} — Your Workspace is Ready`;
+  const subject = `Welcome to GardiaLab, ${user.name.split(" ")[0]} — Your Workspace is Ready`;
 
   const html = wrapEmailTemplate(
     subject,
     `
-      <div class="greeting">Welcome to e-Lab, ${user.name}! 🚀</div>
-      <p>Thank you for creating your account on <strong>e-Lab</strong>, Nigeria's premier cloud environment for high-performance Python, R, VS Code, and interactive Jupyter scientific computing.</p>
+      <div class="greeting">Welcome to GardiaLab, ${user.name}! 🚀</div>
+      <p>Thank you for creating your account on <strong>GardiaLab</strong>, Nigeria's premier cloud environment for high-performance Python, R, SQL Server, Power BI, VS Code, and interactive Jupyter scientific computing.</p>
 
       <div class="card">
         <div class="card-title">Account Registration Summary</div>
@@ -163,14 +163,14 @@ export function buildPasswordResetEmail(
   user: { name: string; email: string },
   code: string,
 ): { subject: string; html: string } {
-  const subject = `e-Lab Password Reset Code: ${code}`;
+  const subject = `GardiaLab Password Reset Code: ${code}`;
 
   const html = wrapEmailTemplate(
     subject,
     `
-      <div class="greeting">Reset Your e-Lab Password</div>
+      <div class="greeting">Reset Your GardiaLab Password</div>
       <p>Hello <strong>${user.name}</strong>,</p>
-      <p>We received a request to reset the password for your e-Lab account registered with <strong>${user.email}</strong>.</p>
+      <p>We received a request to reset the password for your GardiaLab account registered with <strong>${user.email}</strong>.</p>
       
       <p>Please enter the following 6-digit verification code on the password reset screen:</p>
 
@@ -228,7 +228,7 @@ export function buildPaymentSubmittedEmail(
     subject,
     `
       <div class="greeting">Payment Logged for Administrative Review 💳</div>
-      <p>A new bank transfer payment has been submitted on the e-Lab portal and is currently awaiting verification.</p>
+      <p>A new bank transfer payment has been submitted on the GardiaLab portal and is currently awaiting verification.</p>
 
       <div class="card">
         <div class="card-title">Payment Transaction Details</div>
@@ -316,7 +316,7 @@ export function buildPaymentApprovedEmail(
     maximumFractionDigits: 0,
   }).format(payment.amount);
 
-  const subject = `Access Approved! Your e-Lab Cloud Laboratory is Now Active`;
+  const subject = `Access Approved! Your GardiaLab Cloud Laboratory is Now Active`;
 
   const html = wrapEmailTemplate(
     subject,
@@ -361,17 +361,19 @@ export function buildPaymentApprovedEmail(
         </table>
       </div>
 
-      <h3 style="color: #071E5D; margin-top: 24px; font-size: 16px;">What you can now access on e-Lab:</h3>
+      <h3 style="color: #071E5D; margin-top: 24px; font-size: 16px;">What you can now access on GardiaLab:</h3>
       <ul style="color: #334155; line-height: 1.8; padding-left: 20px; font-size: 14px;">
         <li><strong>Interactive Jupyter Notebook:</strong> Build & run data analysis notebooks, plot figures, download for offline work, and upload back.</li>
         <li><strong>Python Lab:</strong> Scientific Python runtime with NumPy, Pandas, Scikit-learn, and Matplotlib.</li>
         <li><strong>R Lab:</strong> Complete statistical computing, ggplot2, and data visualization.</li>
+        <li><strong>SQL Server Lab:</strong> Relational database queries, schema explorer, and T-SQL.</li>
+        <li><strong>Power BI Studio:</strong> Interactive embedded dashboards, starter datasets, and DAX modeling.</li>
         <li><strong>VS Code Web:</strong> Modern full-featured code editor with syntax highlighting and file management.</li>
       </ul>
 
       <div style="text-align: center; margin: 32px 0;">
         <a href="${PLATFORM_URL}/dashboard" class="btn btn-lime" style="font-size: 16px; padding: 14px 32px; box-shadow: 0 4px 14px rgba(0,168,150,0.3);">
-          🚀 Launch e-Lab Workspace Now →
+          🚀 Launch GardiaLab Workspace Now →
         </a>
       </div>
 

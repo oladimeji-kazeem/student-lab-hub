@@ -69,7 +69,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       );
     }
 
-    // Custom dark theme styling overrides for e-Lab aesthetic
+    // Custom dark theme styling overrides for GardiaLab aesthetic
     list.push(
       EditorView.theme({
         "&": {

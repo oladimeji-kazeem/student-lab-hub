@@ -8,9 +8,9 @@ import { downloadFile, downloadAsIpynb, downloadRWorkspace } from "@/lib/code-ex
 export const Route = createFileRoute("/lab/vscode")({
   head: () => ({
     meta: [
-      { title: "VS Code Online — e-Lab" },
+      { title: "VS Code Online — GardiaLab" },
       { name: "description", content: "Open a VS Code workspace in your browser." },
-      { property: "og:title", content: "VS Code Online — e-Lab" },
+      { property: "og:title", content: "VS Code Online — GardiaLab" },
       { property: "og:description", content: "A full code editor without installing anything." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -173,7 +173,7 @@ function VSCode() {
               className="flex-1 resize-none bg-editor p-4 font-mono text-sm text-editor-foreground outline-none"
             />
             <div className="bg-teal px-4 py-1 font-mono text-xs text-primary-foreground">
-              e-Lab · {open.split(".").pop()?.toUpperCase()} · UTF-8
+              GardiaLab · {open.split(".").pop()?.toUpperCase()} · UTF-8
             </div>
           </div>
         </div>

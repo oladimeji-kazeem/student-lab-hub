@@ -4,9 +4,9 @@ import { CodeLab } from "@/components/CodeLab";
 export const Route = createFileRoute("/lab/r")({
   head: () => ({
     meta: [
-      { title: "R Lab — e-Lab" },
+      { title: "R Lab — GardiaLab" },
       { name: "description", content: "Run R code online for statistics labs." },
-      { property: "og:title", content: "R Lab — e-Lab" },
+      { property: "og:title", content: "R Lab — GardiaLab" },
       { property: "og:description", content: "R in the browser, no install." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

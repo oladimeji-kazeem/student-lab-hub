@@ -35,14 +35,14 @@ import { EmailNotificationsModule } from "@/components/admin/EmailNotificationsM
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin console — e-Lab" },
+      { title: "Admin console — GardiaLab" },
       {
         name: "description",
         content:
           "Manage users, academic institutions, departments, courses, Nigerian states, web analytics, payments, and portal settings.",
       },
-      { property: "og:title", content: "Admin console — e-Lab" },
-      { property: "og:description", content: "e-Lab administration & academic catalog." },
+      { property: "og:title", content: "Admin console — GardiaLab" },
+      { property: "og:description", content: "GardiaLab administration & academic catalog." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -1776,7 +1776,7 @@ function Settings() {
         <Field label="Account Name">
           <Input
             value={f.accountName}
-            placeholder="e-Lab Technologies Ltd"
+            placeholder="GardiaLab Technologies Ltd"
             onChange={(e) => setF({ ...f, accountName: e.target.value })}
           />
         </Field>

@@ -55,7 +55,7 @@ export async function sendSmtpEmail(
 
   const senderHeader = config.from.includes("<")
     ? config.from
-    : `e-Lab Notifications <${fromEmail}>`;
+    : `GardiaLab Notifications <${fromEmail}>`;
 
   const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2, 9)}@ai-gardia.com>`;
 
@@ -71,7 +71,7 @@ export async function sendSmtpEmail(
     `MIME-Version: 1.0`,
     `Content-Type: text/html; charset=UTF-8`,
     `Content-Transfer-Encoding: base64`,
-    `X-Mailer: e-Lab-Mailer-ai-gardia.com`,
+    `X-Mailer: GardiaLab-Mailer-ai-gardia.com`,
   ]
     .filter(Boolean)
     .join("\r\n");

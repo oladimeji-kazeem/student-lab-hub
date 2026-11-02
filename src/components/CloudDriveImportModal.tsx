@@ -190,7 +190,7 @@ head(df, 3)\n`;
               onChange={(e) => handleSelectPreset(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-lime"
             >
-              <option value="">-- Choose from e-Lab Class Datasets (Optional) --</option>
+              <option value="">-- Choose from GardiaLab Class Datasets (Optional) --</option>
               {POWERBI_DATASETS.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.title} ({d.badge})
@@ -241,7 +241,7 @@ head(df, 3)\n`;
             <div className="font-bold text-foreground">💡 Link Permission Reminder:</div>
             <div>
               Ensure your file sharing on Google Drive or OneDrive is set to{" "}
-              <strong>"Anyone with the link can view"</strong> so e-Lab can stream or fetch the data.
+              <strong>"Anyone with the link can view"</strong> so GardiaLab can stream or fetch the data.
             </div>
           </div>
 
@@ -281,3 +281,4 @@ head(df, 3)\n`;
     </div>
   );
 }
+

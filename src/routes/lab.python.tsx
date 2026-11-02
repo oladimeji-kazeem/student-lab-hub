@@ -4,9 +4,9 @@ import { CodeLab } from "@/components/CodeLab";
 export const Route = createFileRoute("/lab/python")({
   head: () => ({
     meta: [
-      { title: "Python Lab — e-Lab" },
+      { title: "Python Lab — GardiaLab" },
       { name: "description", content: "Run Python 3 code online in your browser." },
-      { property: "og:title", content: "Python Lab — e-Lab" },
+      { property: "og:title", content: "Python Lab — GardiaLab" },
       { property: "og:description", content: "Python in the browser, no install." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

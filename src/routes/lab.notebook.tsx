@@ -34,12 +34,12 @@ export const Route = createFileRoute("/lab/notebook")({
   },
   head: () => ({
     meta: [
-      { title: "Interactive Notebook — e-Lab" },
+      { title: "Interactive Notebook — GardiaLab" },
       {
         name: "description",
         content: "Run interactive Jupyter-style Python and R notebooks directly in the browser.",
       },
-      { property: "og:title", content: "Interactive Notebook — e-Lab" },
+      { property: "og:title", content: "Interactive Notebook — GardiaLab" },
       {
         property: "og:description",
         content: "Code notebooks for Python & R with .ipynb, .py, .R, and .RData downloads.",

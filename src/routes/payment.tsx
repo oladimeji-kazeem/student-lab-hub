@@ -7,15 +7,15 @@ import { NIGERIAN_BANKS } from "@/lib/nigerian-academic-data";
 export const Route = createFileRoute("/payment")({
   head: () => ({
     meta: [
-      { title: "Payments — e-Lab" },
+      { title: "Payments — GardiaLab" },
       {
         name: "description",
-        content: "Bank transfer details and payment logging for e-Lab access.",
+        content: "Bank transfer details and payment logging for GardiaLab access.",
       },
-      { property: "og:title", content: "Payments — e-Lab" },
+      { property: "og:title", content: "Payments — GardiaLab" },
       {
         property: "og:description",
-        content: "Log your Nigerian bank transfer to activate your e-Lab coding environment.",
+        content: "Log your Nigerian bank transfer to activate your GardiaLab coding environment.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

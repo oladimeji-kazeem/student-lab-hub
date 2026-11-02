@@ -8,13 +8,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Create account — e-Lab" },
+      { title: "Create account — GardiaLab" },
       {
         name: "description",
         content:
-          "Register for e-Lab to run Python, R and VS Code online with zero local setup. For Students, Lecturers, and Industry Professionals across Nigeria.",
+          "Register for GardiaLab to run Python, R, SQL, Power BI, and VS Code online with zero local setup. For Students, Lecturers, and Industry Professionals.",
       },
-      { property: "og:title", content: "Create account — e-Lab" },
+      { property: "og:title", content: "Create account — GardiaLab" },
       {
         property: "og:description",
         content: "Cloud Computing & Online Coding Labs for Nigerian Higher Institutions and Industry.",
@@ -206,11 +206,11 @@ function Register() {
         <Card className="p-6 md:p-8">
           <div className="border-b border-border pb-5">
             <div className="inline-flex items-center gap-2 rounded-full bg-teal/15 px-3 py-1 text-xs font-semibold text-teal">
-              <span>🇳🇬</span>
-              <span>e-Lab Cloud Coding & Scientific Computing</span>
+              <span>🚀</span>
+              <span>GardiaLab Cloud Computing & Data Studio</span>
             </div>
             <h1 className="mt-3 text-2xl font-extrabold text-primary md:text-3xl">
-              Create Your e-Lab Account
+              Create Your GardiaLab Account
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Select your user category below to set up your online Python, R, and VS Code development environment.

@@ -65,7 +65,7 @@ export function ResourceLibrary() {
       fileSize: "Cloud Hosted",
       description: newDesc.trim() || "Uploaded instructional material from cloud storage.",
       course: newCourse.trim() || "General Practice",
-      authorOrDept: user?.name || "e-Lab Instructor",
+      authorOrDept: user?.name || "GardiaLab Instructor",
       shareUrl: newUrl.trim(),
       previewUrl: parsed.previewUrl,
       downloadUrl: parsed.downloadUrl,

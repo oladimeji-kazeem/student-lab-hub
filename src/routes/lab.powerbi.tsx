@@ -4,13 +4,13 @@ import { PowerBiLab } from "@/components/PowerBiLab";
 export const Route = createFileRoute("/lab/powerbi")({
   head: () => ({
     meta: [
-      { title: "Power BI & Analytics Lab — e-Lab" },
+      { title: "Power BI & Analytics Lab — GardiaLab" },
       {
         name: "description",
         content:
           "Power BI studio with downloadable starter datasets, exercise briefs, and sample embedded reports.",
       },
-      { property: "og:title", content: "Power BI & Analytics Lab — e-Lab" },
+      { property: "og:title", content: "Power BI & Analytics Lab — GardiaLab" },
       {
         property: "og:description",
         content:

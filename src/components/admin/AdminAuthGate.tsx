@@ -60,7 +60,7 @@ export function AdminLoginGate({ onSuccess }: AdminLoginGateProps) {
             <span className="inline-block h-2 w-2 rounded-full bg-warning animate-pulse" />
             <span>Restricted Gateway · Level-1 Administrative Clearance</span>
           </div>
-          <span className="font-mono text-[11px] text-muted-foreground">e-Lab v2.4</span>
+          <span className="font-mono text-[11px] text-muted-foreground">GardiaLab v2.4</span>
         </div>
 
         <Card className="p-6 sm:p-8 border-teal/40 shadow-xl">
@@ -177,10 +177,10 @@ export function AdminLoginGate({ onSuccess }: AdminLoginGateProps) {
               </Button>
             </div>
 
-            {/* Secondary Admin: e-Lab System Admin */}
+            {/* Secondary Admin: GardiaLab System Admin */}
             <div className="rounded-lg bg-background/50 border border-border p-2 space-y-1 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">e-Lab System Administrator</span>
+                <span className="font-medium text-foreground">GardiaLab System Administrator</span>
                 <span className="text-[10px] rounded bg-muted text-muted-foreground font-mono px-1.5 py-0.2">
                   admin
                 </span>
@@ -457,7 +457,7 @@ export function AdminProfileModal({ user, onClose }: AdminProfileModalProps) {
           </Field>
 
           <div className="rounded-xl bg-accent/40 p-3 text-[11px] text-muted-foreground">
-            <strong>Security Tip:</strong> Updating your password will immediately apply to your future logins across the e-Lab portal.
+            <strong>Security Tip:</strong> Updating your password will immediately apply to your future logins across the GardiaLab portal.
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">

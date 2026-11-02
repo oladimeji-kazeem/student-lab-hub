@@ -4,13 +4,13 @@ import { ResourceLibrary } from "@/components/ResourceLibrary";
 export const Route = createFileRoute("/resources")({
   head: () => ({
     meta: [
-      { title: "Resource Library & Lab Manuals — e-Lab" },
+      { title: "Resource Library & Lab Manuals — GardiaLab" },
       {
         name: "description",
         content:
           "Access course textbooks, practical lab manuals, and datasets from Google Drive & OneDrive.",
       },
-      { property: "og:title", content: "Resource Library & Lab Manuals — e-Lab" },
+      { property: "og:title", content: "Resource Library & Lab Manuals — GardiaLab" },
       {
         property: "og:description",
         content:

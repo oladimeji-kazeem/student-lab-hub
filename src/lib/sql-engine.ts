@@ -190,7 +190,7 @@ ORDER BY InventoryValue DESC;`,
   },
   {
     id: "academic",
-    name: "e-Lab Academic & Student Information System",
+    name: "GardiaLab Academic & Student Information System",
     description: "Higher institutions, faculties, departments, courses, matriculated students, and semester grades.",
     badge: "Higher Ed",
     tables: ["Departments", "Courses", "Lecturers", "Students", "Enrollments"],
@@ -334,7 +334,7 @@ CREATE TABLE Merchants (
 
 INSERT INTO Merchants VALUES
 (1, 'Jumia Superstore', 'Retail', 'Lagos'),
-(2, 'e-Lab Academy', 'Education & EdTech', 'Ikeja'),
+(2, 'GardiaLab Academy', 'Education & EdTech', 'Ikeja'),
 (3, 'Konga Online', 'E-Commerce', 'Lagos'),
 (4, 'Eko Electricity', 'Utilities', 'Lagos'),
 (5, 'OPay Fast Food', 'Food & Dining', 'Abuja');

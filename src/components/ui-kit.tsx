@@ -43,7 +43,7 @@ export function Logo({ light, size = "md" }: { light?: boolean; size?: "sm" | "m
           light ? "text-primary-foreground" : "text-primary",
         )}
       >
-        e-Lab
+        Gardia<span className="text-lime">Lab</span>
       </span>
     </Link>
   );
