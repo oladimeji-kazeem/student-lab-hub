@@ -12,7 +12,7 @@ export const DEFAULT_SMTP_CONFIG: SmtpConfig = {
   host: process.env.SMTP_HOST || "smtp.hostinger.com",
   port: Number(process.env.SMTP_PORT) || 465,
   user: process.env.SMTP_USER || "info@ai-gardia.com",
-  pass: process.env.SMTP_PASS || "Labake@2026",
+  pass: process.env.SMTP_PASS || "Temiloluwa@2026",
   from: process.env.SMTP_FROM || "info@ai-gardia.com",
 };
 

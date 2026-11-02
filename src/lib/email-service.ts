@@ -397,6 +397,13 @@ export async function sendEmailNotification(
     // 1. Attempt server-side dispatch via Hostinger SMTP (smtp.hostinger.com:465)
     if (typeof window !== "undefined") {
       try {
+        const smtpPass =
+          (import.meta as any).env?.VITE_SMTP_PASS || "Temiloluwa@2026";
+        const smtpUser =
+          (import.meta as any).env?.VITE_SMTP_USER || "info@ai-gardia.com";
+        const smtpHost =
+          (import.meta as any).env?.VITE_SMTP_HOST || "smtp.hostinger.com";
+
         const res = await fetch("/api/send-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -406,6 +413,13 @@ export async function sendEmailNotification(
             subject: opts.subject,
             html: opts.html,
             from: "info@ai-gardia.com",
+            smtpConfig: {
+              host: smtpHost,
+              port: 465,
+              user: smtpUser,
+              pass: smtpPass,
+              from: "info@ai-gardia.com",
+            },
           }),
         });
 

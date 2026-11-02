@@ -22,7 +22,7 @@ export function EmailNotificationsModule() {
   const [hostInput, setHostInput] = useState("smtp.hostinger.com");
   const [portInput, setPortInput] = useState("465");
   const [userInput, setUserInput] = useState("info@ai-gardia.com");
-  const [passInput, setPassInput] = useState("Labake@2026");
+  const [passInput, setPassInput] = useState("Temiloluwa@2026");
 
   const handleTestSmtp = async (customCreds?: { host: string; port: number; user: string; pass: string }) => {
     setSmtpDiag({ testing: true });
