@@ -56,6 +56,7 @@ function Register() {
   const [customCourse, setCustomCourse] = useState("");
   const [selectedDegreeId, setSelectedDegreeId] = useState(DEGREE_LEVELS[0]?.id || "deg-bsc");
   const [customDegree, setCustomDegree] = useState("");
+  const [matricNumber, setMatricNumber] = useState("");
 
   // Lecturer-Only Field
   const [designation, setDesignation] = useState("Lecturer I");
@@ -134,6 +135,10 @@ function Register() {
     let resolvedState: string | undefined;
 
     if (accountType === "student") {
+      if (!matricNumber.trim()) {
+        return setErr("Matriculation / Student ID Number is compulsory for all student registrants.");
+      }
+
       resolvedInst = institution === "OTHER" ? customInstitution.trim() : institution;
       if (!resolvedInst) return setErr("Please select or enter your higher institution");
 
@@ -183,6 +188,7 @@ function Register() {
         currentRole: resolvedRole,
         employer: resolvedEmployer,
         stateOfResidence: resolvedState,
+        matricNumber: accountType === "student" ? matricNumber.trim() : undefined,
       });
       nav({ to: "/payment" });
     } catch (x) {
@@ -361,8 +367,28 @@ function Register() {
             {/* === CATEGORY: STUDENT === */}
             {accountType === "student" && (
               <div className="space-y-5 rounded-2xl border border-border bg-card/60 p-5 fade-up">
-                <div className="text-xs font-bold uppercase tracking-wider text-teal flex items-center gap-1.5">
-                  <span>🎓</span> Student Academic Profile
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wider text-teal flex items-center gap-1.5">
+                    <span>🎓</span> Student Academic Profile
+                  </div>
+                  <span className="text-[11px] font-semibold text-destructive">* Matric Number Compulsory</span>
+                </div>
+
+                {/* Matriculation / Student ID Number */}
+                <div className="rounded-xl border border-teal/40 bg-teal/10 p-3.5 space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-teal">
+                    Matriculation / Student ID Number <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    required
+                    placeholder="e.g. 19/02345 or CSC/2022/1042"
+                    value={matricNumber}
+                    onChange={(e) => setMatricNumber(e.target.value)}
+                    className="font-medium bg-card"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Required for student identity verification, lab practical rosters, and administrative manual assignments.
+                  </p>
                 </div>
 
                 {/* Higher Institution */}

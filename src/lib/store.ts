@@ -68,6 +68,7 @@ export interface User {
   currentRole?: string;
   employer?: string;
   stateOfResidence?: string;
+  matricNumber?: string;
   createdAt: string;
   accessUntil?: string | undefined;
   envs: Env[];
@@ -93,6 +94,7 @@ export interface Payment {
   manualId?: string;
   manualTitle?: string;
   requestedTools?: Env[];
+  matricNumber?: string;
   approvalScopes?: ("manual" | "course" | "tool")[];
 }
 
@@ -1217,6 +1219,7 @@ export const actions = {
     email: string;
     password: string;
     accountType: AccountType;
+    matricNumber?: string;
     institution?: string;
     department?: string;
     course?: string;
@@ -1224,11 +1227,16 @@ export const actions = {
     currentRole?: string;
     employer?: string;
     stateOfResidence?: string;
+    matricNumber?: string;
   }) {
     const s0 = getState();
     if (!s0.settings.allowRegistration) throw new Error("Registration is currently closed");
     if (s0.users.some((u) => u.email.toLowerCase() === params.email.toLowerCase()))
       throw new Error("Email already registered");
+
+    if (params.accountType === "student" && !params.matricNumber?.trim()) {
+      throw new Error("Matriculation / Student ID number is compulsory for student registration.");
+    }
 
     const isOlaAdmin = params.email.trim().toLowerCase() === "olakazeem@gmail.com";
     const u: User = {
@@ -1244,6 +1252,7 @@ export const actions = {
       currentRole: params.currentRole,
       employer: params.employer,
       stateOfResidence: params.stateOfResidence,
+      matricNumber: params.matricNumber?.trim(),
       role: isOlaAdmin ? "admin" : "user",
       status: isOlaAdmin ? "active" : "pending",
       createdAt: new Date().toISOString(),
@@ -1299,15 +1308,24 @@ export const actions = {
       status: "pending",
       createdAt: new Date().toISOString(),
     };
-    set((s) =>
-      log(
+    set((s) => {
+      // If student provided matricNumber during payment, persist it to their user profile
+      const updatedUsers = s.users.map((u) => {
+        if (u.id === userId && p.matricNumber && !u.matricNumber) {
+          return { ...u, matricNumber: p.matricNumber.trim() };
+        }
+        return u;
+      });
+
+      return log(
         {
           ...s,
+          users: updatedUsers,
           payments: [newPayment, ...s.payments],
         },
-        `Payment logged: ${p.reference}`,
-      ),
-    );
+        `Payment logged: ${p.reference}${p.matricNumber ? ` (Matric: ${p.matricNumber})` : ""}`,
+      );
+    });
     syncPaymentToSupabase({
       id: newPayment.id,
       userId: newPayment.userId,
@@ -1333,6 +1351,8 @@ export const actions = {
         payerName: newPayment.payerName,
         planName: selectedPlan?.name || newPayment.plan,
         note: newPayment.note,
+        matricNumber: newPayment.matricNumber || currentUser?.matricNumber,
+        courseCode: newPayment.courseCode,
       },
       currentUser,
     ).catch((err) => {
@@ -1532,6 +1552,7 @@ export const actions = {
     role: Role;
     status: UserStatus;
     accountType: AccountType;
+    matricNumber?: string;
     institution?: string;
     department?: string;
     course?: string;
@@ -1556,6 +1577,7 @@ export const actions = {
       role: isOlaAdmin ? "admin" : userData.role,
       status: isOlaAdmin ? "active" : userData.status,
       accountType: userData.accountType,
+      matricNumber: userData.matricNumber?.trim() || undefined,
       institution: userData.institution,
       department: userData.department,
       course: userData.course,

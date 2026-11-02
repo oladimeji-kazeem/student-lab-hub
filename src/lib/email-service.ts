@@ -258,6 +258,16 @@ export function buildPaymentSubmittedEmail(
             <td class="value">${payment.payerName}</td>
           </tr>
           ${
+            (payment as any).matricNumber
+              ? `<tr><td class="label">Matriculation Number</td><td class="value" style="font-weight: bold; color: #071E5D;">${(payment as any).matricNumber}</td></tr>`
+              : ""
+          }
+          ${
+            (payment as any).courseCode
+              ? `<tr><td class="label">Course / Subject</td><td class="value" style="font-weight: bold; color: #189B9B;">${(payment as any).courseCode}</td></tr>`
+              : ""
+          }
+          ${
             user?.email
               ? `<tr><td class="label">Registered Email</td><td class="value">${user.email}</td></tr>`
               : ""
@@ -538,6 +548,8 @@ export async function triggerPaymentSubmittedEmail(
     payerName: string;
     planName: string;
     note?: string;
+    matricNumber?: string;
+    courseCode?: string;
   },
   user?: {
     name: string;

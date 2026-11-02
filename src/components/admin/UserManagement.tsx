@@ -50,6 +50,7 @@ export function UserManagement() {
     role: "user" as Role,
     status: "active" as UserStatus,
     accountType: "student" as AccountType,
+    matricNumber: "",
     institution: institutions[0]?.name || "University of Lagos",
     department: departments[0]?.name || "Computer Science",
     course: courses[0]?.name || "Computer Science",
@@ -76,6 +77,8 @@ export function UserManagement() {
           u.name +
           " " +
           u.email +
+          " " +
+          (u.matricNumber || "") +
           " " +
           (u.institution || "") +
           " " +
@@ -535,6 +538,12 @@ export function UserManagement() {
                             ) : null}
                           </div>
                           <div className="text-xs font-mono text-muted-foreground">{u.email}</div>
+                          {u.matricNumber && (
+                            <div className="text-[10px] font-mono font-bold text-teal flex items-center gap-1 mt-0.5">
+                              <span>Matric:</span>
+                              <span className="bg-teal/15 px-1 py-0.2 rounded">{u.matricNumber}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -576,6 +585,11 @@ export function UserManagement() {
                             {u.department ? `Dept: ${u.department}` : ""}
                             {u.course ? ` (${u.course})` : ""}
                           </div>
+                          {u.matricNumber && (
+                            <div className="text-[10px] font-mono text-teal font-medium">
+                              Matric: {u.matricNumber}
+                            </div>
+                          )}
                           {u.degree && (
                             <div className="text-[10px] text-teal truncate">{u.degree}</div>
                           )}
@@ -764,6 +778,10 @@ export function UserManagement() {
                     role: newUserForm.role,
                     status: newUserForm.status,
                     accountType: newUserForm.accountType,
+                    matricNumber:
+                      newUserForm.accountType === "student"
+                        ? newUserForm.matricNumber.trim()
+                        : undefined,
                     institution:
                       newUserForm.accountType !== "non-academic"
                         ? newUserForm.institution
@@ -970,6 +988,19 @@ export function UserManagement() {
                         }
                       />
                     </Field>
+                    {newUserForm.accountType === "student" && (
+                      <Field label="Matriculation / Student ID Number *">
+                        <Input
+                          placeholder="e.g. 2021/ENG/0429 or MAT12345"
+                          value={newUserForm.matricNumber}
+                          onChange={(e) =>
+                            setNewUserForm({ ...newUserForm, matricNumber: e.target.value })
+                          }
+                          className="font-mono text-xs font-semibold"
+                          required
+                        />
+                      </Field>
+                    )}
                   </div>
                 </div>
               )}
@@ -1192,15 +1223,29 @@ export function UserManagement() {
                     />
                   </Field>
                 ) : (
-                  <Field label="Higher Institution">
-                    <Input
-                      value={editingUser.institution || ""}
-                      onChange={(e) =>
-                        setEditingUser({ ...editingUser, institution: e.target.value })
-                      }
-                      placeholder="University name"
-                    />
-                  </Field>
+                  <>
+                    <Field label="Higher Institution">
+                      <Input
+                        value={editingUser.institution || ""}
+                        onChange={(e) =>
+                          setEditingUser({ ...editingUser, institution: e.target.value })
+                        }
+                        placeholder="University name"
+                      />
+                    </Field>
+                    {editingUser.accountType === "student" && (
+                      <Field label="Matriculation / Student ID Number">
+                        <Input
+                          value={editingUser.matricNumber || ""}
+                          onChange={(e) =>
+                            setEditingUser({ ...editingUser, matricNumber: e.target.value })
+                          }
+                          placeholder="e.g. 2021/ENG/0429 or MAT12345"
+                          className="font-mono text-xs font-semibold"
+                        />
+                      </Field>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1552,6 +1597,14 @@ export function UserManagement() {
                       : `${viewingUser.institution || "Higher Institution"} · ${viewingUser.department || "General"} · ${viewingUser.course || "Degree Candidate"}`}
                   </span>
                 </div>
+                {viewingUser.matricNumber && (
+                  <div className="sm:col-span-2 pt-1 border-t border-border/50 flex items-center justify-between">
+                    <span className="text-muted-foreground text-[11px]">Matriculation / Student ID:</span>
+                    <span className="font-mono font-bold text-teal text-xs bg-teal/15 px-2 py-0.5 rounded">
+                      {viewingUser.matricNumber}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Lab Access & Entitlements */}

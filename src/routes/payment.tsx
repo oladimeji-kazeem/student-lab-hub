@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { AppShell, Card, Badge, Button, Input, Field } from "@/components/ui-kit";
 import { actions, useCurrentUser, useStore, formatNaira, type Env } from "@/lib/store";
 import { NIGERIAN_BANKS } from "@/lib/nigerian-academic-data";
 import { INITIAL_RESOURCES } from "@/lib/resources-data";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -51,7 +53,16 @@ function PaymentPage() {
   const [customCourse, setCustomCourse] = useState("");
 
   const [selectedManualId, setSelectedManualId] = useState<string>("all");
-  const [selectedToolScope, setSelectedToolScope] = useState<string>("all");
+  const [selectedTools, setSelectedTools] = useState<Env[]>([
+    "python",
+    "r",
+    "vscode",
+    "notebook",
+    "sql",
+    "powerbi",
+  ]);
+
+  const [matricNumber, setMatricNumber] = useState(user?.matricNumber || "");
 
   const [f, setF] = useState({
     plan: "",
@@ -87,6 +98,12 @@ function PaymentPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (user.accountType === "student" && !matricNumber.trim()) {
+      toast.error("Matriculation / Student ID number is compulsory for student subscribers.");
+      return;
+    }
+
     const effectiveBank =
       selectedBank === "Other Nigerian Bank" && customBank.trim()
         ? customBank.trim()
@@ -106,20 +123,6 @@ function PaymentPage() {
         ? "All Applicable Course Manuals & Datasets"
         : manualObj?.title || selectedManualId;
 
-    let requestedTools: Env[] = [
-      "python",
-      "r",
-      "vscode",
-      "notebook",
-      "sql",
-      "powerbi",
-    ];
-    if (selectedToolScope === "python") requestedTools = ["python", "notebook"];
-    else if (selectedToolScope === "sql") requestedTools = ["sql"];
-    else if (selectedToolScope === "powerbi") requestedTools = ["powerbi"];
-    else if (selectedToolScope === "r") requestedTools = ["r", "notebook"];
-    else if (selectedToolScope === "manual_only") requestedTools = [];
-
     actions.submitPayment({
       plan: plan!.id,
       bank: effectiveBank,
@@ -131,7 +134,8 @@ function PaymentPage() {
       courseCode: effectiveCourse,
       manualId: selectedManualId === "all" ? undefined : selectedManualId,
       manualTitle: effectiveManualTitle,
-      requestedTools,
+      requestedTools: selectedTools,
+      matricNumber: matricNumber.trim() || undefined,
     });
 
     setF({
@@ -295,22 +299,117 @@ function PaymentPage() {
                 )}
               </div>
 
-              <Field label="Primary Coding Tool / Environment Needed">
-                <select
-                  value={selectedToolScope}
-                  onChange={(e) => setSelectedToolScope(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="all">
-                    ⚡ Full Platform Suite (Python, R, SQL, Power BI, Notebook, VS Code)
-                  </option>
-                  <option value="python">🐍 Python Lab & Interactive Notebooks</option>
-                  <option value="sql">🗄️ SQL Server & Relational Database Lab</option>
-                  <option value="powerbi">📈 Power BI Studio & Business Analytics Lab</option>
-                  <option value="r">📊 R Statistical Computing Lab</option>
-                  <option value="manual_only">📖 Course Practical Manual & Textbook Access Only</option>
-                </select>
-              </Field>
+              {/* Primary Coding Tool / Environment Needed (Multi-select Checkboxes) */}
+              <div className="space-y-2 pt-1 border-t border-teal/20">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-teal block">
+                      Primary Coding Tool / Environment Needed (Pick One or More):
+                    </label>
+                    <span className="text-[11px] text-muted-foreground">
+                      Check each environment you require for your course practicals
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedTools(["python", "r", "vscode", "notebook", "sql", "powerbi"])
+                      }
+                      className="rounded bg-teal/20 text-teal px-2 py-0.5 text-[11px] font-bold hover:bg-teal/30 transition"
+                    >
+                      Select All Tools
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTools([])}
+                      className="rounded bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium hover:bg-muted/80 transition"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                  {[
+                    { id: "python" as const, label: "Python Lab", icon: "🐍", desc: "NumPy, Pandas, Matplotlib" },
+                    { id: "r" as const, label: "R Lab", icon: "📊", desc: "Statistical inference & OLS" },
+                    { id: "sql" as const, label: "SQL Server Lab", icon: "🗄️", desc: "Relational queries & T-SQL" },
+                    { id: "powerbi" as const, label: "Power BI Studio", icon: "📈", desc: "Interactive dashboards & DAX" },
+                    { id: "notebook" as const, label: "Jupyter Notebook", icon: "📓", desc: "Interactive .ipynb runtime" },
+                    { id: "vscode" as const, label: "VS Code Online", icon: "💻", desc: "Full online code editor" },
+                  ].map((tool) => {
+                    const isChecked = selectedTools.includes(tool.id);
+                    return (
+                      <label
+                        key={tool.id}
+                        className={cn(
+                          "flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition text-xs",
+                          isChecked
+                            ? "border-teal bg-teal/15 shadow-sm font-semibold"
+                            : "border-border hover:bg-muted/40",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTools([...selectedTools, tool.id]);
+                            } else {
+                              setSelectedTools(selectedTools.filter((t) => t !== tool.id));
+                            }
+                          }}
+                          className="mt-0.5 accent-teal h-4 w-4 rounded"
+                        />
+                        <div>
+                          <div className="font-bold text-foreground flex items-center gap-1">
+                            <span>{tool.icon}</span>
+                            <span>{tool.label}</span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5 font-normal">
+                            {tool.desc}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                {selectedTools.length === 0 && (
+                  <p className="text-[11px] text-amber-600 font-medium">
+                    ⚠️ No tools selected. Only practical manual & textbook access will be requested.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Matriculation / Student ID Number (Compulsory for students) */}
+            <div className="sm:col-span-2 rounded-xl border border-teal/40 bg-teal/10 p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-teal">
+                  Matriculation / Student ID Number{" "}
+                  {user.accountType === "student" ? (
+                    <span className="text-destructive">* (Compulsory for Students)</span>
+                  ) : (
+                    <span className="text-muted-foreground font-normal">(Optional for non-students)</span>
+                  )}
+                </label>
+                {user.accountType === "student" && (
+                  <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                    Required Field
+                  </span>
+                )}
+              </div>
+              <Input
+                required={user.accountType === "student"}
+                placeholder="e.g. 19/02345 or CSC/2022/1042"
+                value={matricNumber}
+                onChange={(e) => setMatricNumber(e.target.value)}
+                className="font-medium bg-card text-foreground"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Required for student identity validation on payment receipts, lab roster enrollment, and administrator manual content assignment.
+              </p>
             </div>
 
             <Field label="Choose Access Duration / Plan">

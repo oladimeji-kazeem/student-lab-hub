@@ -1414,6 +1414,8 @@ function Payments() {
     const u = users.find((x) => x.id === p.userId);
     return (
       (p.reference || "").toLowerCase().includes(query) ||
+      (p.matricNumber || "").toLowerCase().includes(query) ||
+      (u?.matricNumber || "").toLowerCase().includes(query) ||
       (p.payerName || "").toLowerCase().includes(query) ||
       (p.bank || "").toLowerCase().includes(query) ||
       (p.courseCode || "").toLowerCase().includes(query) ||
@@ -1512,6 +1514,14 @@ function Payments() {
                     <div className="text-xs text-muted-foreground">
                       {u?.email || (p.userId ? `ID: ${p.userId}` : "Unlinked")}
                     </div>
+                    {(p.matricNumber || u?.matricNumber) && (
+                      <div className="text-[11px] font-mono font-bold text-teal flex items-center gap-1 mt-0.5">
+                        <span>Matric:</span>
+                        <span className="bg-teal/15 px-1 py-0.2 rounded">
+                          {p.matricNumber || u?.matricNumber}
+                        </span>
+                      </div>
+                    )}
                     {u?.institution && (
                       <div className="text-xs text-teal font-medium mt-0.5">
                         {u.institution} {u.department ? `• ${u.department}` : ""}
