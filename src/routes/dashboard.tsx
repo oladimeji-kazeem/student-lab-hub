@@ -60,6 +60,12 @@ function Dashboard() {
       desc: "Relational database queries & T-SQL practice",
     },
     {
+      to: "/lab/powerbi" as const,
+      env: "powerbi" as const,
+      name: "Power BI & Analytics Lab",
+      desc: "Interactive dashboards, downloadable datasets & DAX briefs",
+    },
+    {
       to: "/lab/vscode" as const,
       env: "vscode" as const,
       name: "VS Code",

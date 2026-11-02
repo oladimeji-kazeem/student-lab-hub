@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LabNotebookRouteImport } from './routes/lab.notebook'
+import { Route as LabPowerbiRouteImport } from './routes/lab.powerbi'
 import { Route as LabPythonRouteImport } from './routes/lab.python'
 import { Route as LabRRouteImport } from './routes/lab.r'
 import { Route as LabSqlRouteImport } from './routes/lab.sql'
@@ -62,6 +63,11 @@ const LabNotebookRoute = LabNotebookRouteImport.update({
   path: '/lab/notebook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabPowerbiRoute = LabPowerbiRouteImport.update({
+  id: '/lab/powerbi',
+  path: '/lab/powerbi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabPythonRoute = LabPythonRouteImport.update({
   id: '/lab/python',
   path: '/lab/python',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/payment': typeof PaymentRoute
   '/register': typeof RegisterRoute
   '/lab/notebook': typeof LabNotebookRoute
+  '/lab/powerbi': typeof LabPowerbiRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
   '/lab/sql': typeof LabSqlRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/payment': typeof PaymentRoute
   '/register': typeof RegisterRoute
   '/lab/notebook': typeof LabNotebookRoute
+  '/lab/powerbi': typeof LabPowerbiRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
   '/lab/sql': typeof LabSqlRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/payment': typeof PaymentRoute
   '/register': typeof RegisterRoute
   '/lab/notebook': typeof LabNotebookRoute
+  '/lab/powerbi': typeof LabPowerbiRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
   '/lab/sql': typeof LabSqlRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/register'
     | '/lab/notebook'
+    | '/lab/powerbi'
     | '/lab/python'
     | '/lab/r'
     | '/lab/sql'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/register'
     | '/lab/notebook'
+    | '/lab/powerbi'
     | '/lab/python'
     | '/lab/r'
     | '/lab/sql'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/register'
     | '/lab/notebook'
+    | '/lab/powerbi'
     | '/lab/python'
     | '/lab/r'
     | '/lab/sql'
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   PaymentRoute: typeof PaymentRoute
   RegisterRoute: typeof RegisterRoute
   LabNotebookRoute: typeof LabNotebookRoute
+  LabPowerbiRoute: typeof LabPowerbiRoute
   LabPythonRoute: typeof LabPythonRoute
   LabRRoute: typeof LabRRoute
   LabSqlRoute: typeof LabSqlRoute
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabNotebookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lab/powerbi': {
+      id: '/lab/powerbi'
+      path: '/lab/powerbi'
+      fullPath: '/lab/powerbi'
+      preLoaderRoute: typeof LabPowerbiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lab/python': {
       id: '/lab/python'
       path: '/lab/python'
@@ -284,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentRoute: PaymentRoute,
   RegisterRoute: RegisterRoute,
   LabNotebookRoute: LabNotebookRoute,
+  LabPowerbiRoute: LabPowerbiRoute,
   LabPythonRoute: LabPythonRoute,
   LabRRoute: LabRRoute,
   LabSqlRoute: LabSqlRoute,
