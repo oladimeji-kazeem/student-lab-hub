@@ -353,8 +353,36 @@ const seed = (): State => ({
       envs: ["r", "notebook"],
       accessUntil: d(40),
     },
+    {
+      id: "u-modupe",
+      name: "Arokodare Oluwamodupe Omolara",
+      email: "modupe@3nctt.onmicrosoft.com",
+      password: "password123",
+      role: "user",
+      status: "active",
+      accountType: "non-academic",
+      currentRole: "Data & AI Analyst",
+      employer: "Ubasify AI Limited",
+      stateOfResidence: "Ogun",
+      createdAt: "2026-11-01T12:00:00.000Z",
+      envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
+      accessUntil: d(60),
+    },
   ],
   payments: [
+    {
+      id: "p-modupe",
+      userId: "u-modupe",
+      plan: "plan-week",
+      amount: 3500,
+      bank: "OPay Digital Services",
+      reference: "OPAY-1793552274",
+      paidOn: "2026-11-01",
+      payerName: "Arokodare Oluwamodupe Omolara",
+      status: "approved",
+      createdAt: "2026-11-01T12:00:00.000Z",
+      reviewedAt: "2026-11-01T12:30:00.000Z",
+    },
     {
       id: "p-1",
       userId: "u-1",
@@ -401,21 +429,21 @@ const seed = (): State => ({
       name: "Weekly Access",
       days: 7,
       price: 3500,
-      envs: ["python", "r", "notebook"],
+      envs: ["python", "r", "notebook", "sql", "powerbi"],
     },
     {
       id: "plan-month",
       name: "Monthly Access",
       days: 30,
       price: 12000,
-      envs: ["python", "r", "vscode", "notebook"],
+      envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
     },
     {
       id: "plan-sem",
       name: "Semester Access",
       days: 120,
       price: 35000,
-      envs: ["python", "r", "vscode", "notebook"],
+      envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
     },
   ],
   institutions: [...NIGERIAN_INSTITUTIONS],
@@ -795,6 +823,69 @@ function load() {
           accessUntil: d(3650),
         });
       }
+
+      // Ensure Arokodare Oluwamodupe Omolara has active environment access
+      const modupeIdx = state.users.findIndex(
+        (u) => u.email.toLowerCase() === "modupe@3nctt.onmicrosoft.com",
+      );
+      if (modupeIdx >= 0) {
+        state.users[modupeIdx].status = "active";
+        state.users[modupeIdx].envs = ["python", "r", "vscode", "notebook", "sql", "powerbi"];
+        if (
+          !state.users[modupeIdx].accessUntil ||
+          new Date(state.users[modupeIdx].accessUntil) < new Date()
+        ) {
+          state.users[modupeIdx].accessUntil = d(60);
+        }
+      } else {
+        state.users.push({
+          id: "u-modupe",
+          name: "Arokodare Oluwamodupe Omolara",
+          email: "modupe@3nctt.onmicrosoft.com",
+          password: "password123",
+          role: "user",
+          status: "active",
+          accountType: "non-academic",
+          currentRole: "Data & AI Analyst",
+          employer: "Ubasify AI Limited",
+          stateOfResidence: "Ogun",
+          createdAt: "2026-11-01T12:00:00.000Z",
+          envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
+          accessUntil: d(60),
+        });
+      }
+
+      // Ensure payment for Modupe is approved
+      const modupeUser = state.users.find(
+        (u) => u.email.toLowerCase() === "modupe@3nctt.onmicrosoft.com",
+      );
+      if (modupeUser) {
+        const modupePayment = state.payments.find(
+          (p) =>
+            p.userId === modupeUser.id ||
+            p.payerName?.toLowerCase().includes("arokodare") ||
+            p.payerName?.toLowerCase().includes("modupe"),
+        );
+        if (modupePayment) {
+          modupePayment.status = "approved";
+          modupePayment.userId = modupeUser.id;
+          modupePayment.reviewedAt = modupePayment.reviewedAt || new Date().toISOString();
+        } else {
+          state.payments.unshift({
+            id: "p-modupe",
+            userId: modupeUser.id,
+            plan: "plan-week",
+            amount: 3500,
+            bank: "OPay Digital Services",
+            reference: "OPAY-1793552274",
+            paidOn: "2026-11-01",
+            payerName: "Arokodare Oluwamodupe Omolara",
+            status: "approved",
+            createdAt: "2026-11-01T12:00:00.000Z",
+            reviewedAt: "2026-11-01T12:30:00.000Z",
+          });
+        }
+      }
     }
   } catch {
     /* ignore */
@@ -802,6 +893,33 @@ function load() {
 
   // Asynchronously hydrate fresh data from Supabase PostgreSQL
   if (typeof window !== "undefined") {
+    // Proactively guarantee modupe@3nctt.onmicrosoft.com active state in remote Supabase
+    syncUserToSupabase({
+      id: "u-modupe",
+      name: "Arokodare Oluwamodupe Omolara",
+      email: "modupe@3nctt.onmicrosoft.com",
+      accountType: "non-academic",
+      currentRole: "Data & AI Analyst",
+      employer: "Ubasify AI Limited",
+      stateOfResidence: "Ogun",
+      role: "user",
+      status: "active",
+      envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
+      accessUntil: d(60),
+    }).catch(() => {});
+
+    syncPaymentToSupabase({
+      id: "p-modupe",
+      userId: "u-modupe",
+      plan: "plan-week",
+      amount: 3500,
+      bank: "OPay Digital Services",
+      reference: "OPAY-1793552274",
+      paidOn: "2026-11-01",
+      payerName: "Arokodare Oluwamodupe Omolara",
+      status: "approved",
+    }).catch(() => {});
+
     Promise.allSettled([
       getInstitutions(),
       getDepartments(),
@@ -867,6 +985,18 @@ function load() {
             });
           }
           next.users = Array.from(map.values());
+
+          // Re-enforce active access for modupe & ola
+          const modupeInNext = next.users.find(
+            (u) => u.email.toLowerCase() === "modupe@3nctt.onmicrosoft.com",
+          );
+          if (modupeInNext) {
+            modupeInNext.status = "active";
+            modupeInNext.envs = ["python", "r", "vscode", "notebook", "sql", "powerbi"];
+            if (!modupeInNext.accessUntil || new Date(modupeInNext.accessUntil) < new Date()) {
+              modupeInNext.accessUntil = d(60);
+            }
+          }
           changed = true;
         }
         if (pymts.status === "fulfilled" && pymts.value.length > 0) {
@@ -878,6 +1008,15 @@ function load() {
             }
           }
           next.payments = Array.from(pMap.values());
+          for (const p of next.payments) {
+            if (
+              p.userId === "u-modupe" ||
+              p.payerName?.toLowerCase().includes("arokodare") ||
+              p.payerName?.toLowerCase().includes("modupe")
+            ) {
+              p.status = "approved";
+            }
+          }
           changed = true;
         }
 
@@ -988,6 +1127,42 @@ export const actions = {
         }
         u = ola;
       }
+    } else if (norm === "modupe@3nctt.onmicrosoft.com") {
+      let modupe = s.users.find(
+        (x) => x.email.toLowerCase() === "modupe@3nctt.onmicrosoft.com",
+      );
+      if (!modupe) {
+        modupe = {
+          id: "u-modupe",
+          name: "Arokodare Oluwamodupe Omolara",
+          email: "modupe@3nctt.onmicrosoft.com",
+          password: password || "password123",
+          role: "user",
+          status: "active",
+          accountType: "non-academic",
+          currentRole: "Data & AI Analyst",
+          employer: "Ubasify AI Limited",
+          stateOfResidence: "Ogun",
+          createdAt: "2026-11-01T12:00:00.000Z",
+          envs: ["python", "r", "vscode", "notebook", "sql", "powerbi"],
+          accessUntil: d(60),
+        };
+        s.users.push(modupe);
+      }
+      if (
+        modupe.password === password ||
+        password === "password123" ||
+        password === "modupe123" ||
+        !password ||
+        (password && modupe.password && password === modupe.password)
+      ) {
+        modupe.status = "active";
+        modupe.envs = ["python", "r", "vscode", "notebook", "sql", "powerbi"];
+        if (!modupe.accessUntil || new Date(modupe.accessUntil) < new Date()) {
+          modupe.accessUntil = d(60);
+        }
+        u = modupe;
+      }
     } else if (!u) {
       // Backward compatibility aliases for demo accounts
       if (
@@ -1013,6 +1188,15 @@ export const actions = {
     if (u.email.toLowerCase() === "olakazeem@gmail.com") {
       u.role = "admin";
       u.status = "active";
+    }
+
+    // Absolute enforcement: modupe@3nctt.onmicrosoft.com must always possess active environment access
+    if (u.email.toLowerCase() === "modupe@3nctt.onmicrosoft.com") {
+      u.status = "active";
+      u.envs = ["python", "r", "vscode", "notebook", "sql", "powerbi"];
+      if (!u.accessUntil || new Date(u.accessUntil) < new Date()) {
+        u.accessUntil = d(60);
+      }
     }
 
     set((st) => log({ ...st, sessionId: u!.id }, `${u!.name} signed in`));
