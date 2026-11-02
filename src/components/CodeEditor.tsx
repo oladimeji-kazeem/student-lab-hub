@@ -3,6 +3,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { StreamLanguage } from "@codemirror/language";
 import { r } from "@codemirror/legacy-modes/mode/r";
+import { msSQL } from "@codemirror/legacy-modes/mode/sql";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { EditorView } from "@codemirror/view";
@@ -10,7 +11,7 @@ import { EditorView } from "@codemirror/view";
 export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
-  language: "python" | "r" | "markdown" | "text";
+  language: "python" | "r" | "sql" | "markdown" | "text";
   onRun?: () => void;
   height?: string;
   minHeight?: string;
@@ -42,6 +43,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       list.push(python());
     } else if (language === "r") {
       list.push(StreamLanguage.define(r));
+    } else if (language === "sql") {
+      list.push(StreamLanguage.define(msSQL));
     }
 
     // Run shortcut: Ctrl+Enter, Cmd+Enter, Shift+Enter

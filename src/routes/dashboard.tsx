@@ -54,6 +54,12 @@ function Dashboard() {
     },
     { to: "/lab/r" as const, env: "r" as const, name: "R Lab", desc: "R runtime for statistics" },
     {
+      to: "/lab/sql" as const,
+      env: "sql" as const,
+      name: "SQL Server Lab",
+      desc: "Relational database queries & T-SQL practice",
+    },
+    {
       to: "/lab/vscode" as const,
       env: "vscode" as const,
       name: "VS Code",

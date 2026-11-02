@@ -19,6 +19,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LabNotebookRouteImport } from './routes/lab.notebook'
 import { Route as LabPythonRouteImport } from './routes/lab.python'
 import { Route as LabRRouteImport } from './routes/lab.r'
+import { Route as LabSqlRouteImport } from './routes/lab.sql'
 import { Route as LabVscodeRouteImport } from './routes/lab.vscode'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +72,11 @@ const LabRRoute = LabRRouteImport.update({
   path: '/lab/r',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabSqlRoute = LabSqlRouteImport.update({
+  id: '/lab/sql',
+  path: '/lab/sql',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabVscodeRoute = LabVscodeRouteImport.update({
   id: '/lab/vscode',
   path: '/lab/vscode',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/lab/notebook': typeof LabNotebookRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
+  '/lab/sql': typeof LabSqlRoute
   '/lab/vscode': typeof LabVscodeRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/lab/notebook': typeof LabNotebookRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
+  '/lab/sql': typeof LabSqlRoute
   '/lab/vscode': typeof LabVscodeRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/lab/notebook': typeof LabNotebookRoute
   '/lab/python': typeof LabPythonRoute
   '/lab/r': typeof LabRRoute
+  '/lab/sql': typeof LabSqlRoute
   '/lab/vscode': typeof LabVscodeRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/lab/notebook'
     | '/lab/python'
     | '/lab/r'
+    | '/lab/sql'
     | '/lab/vscode'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/lab/notebook'
     | '/lab/python'
     | '/lab/r'
+    | '/lab/sql'
     | '/lab/vscode'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/lab/notebook'
     | '/lab/python'
     | '/lab/r'
+    | '/lab/sql'
     | '/lab/vscode'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   LabNotebookRoute: typeof LabNotebookRoute
   LabPythonRoute: typeof LabPythonRoute
   LabRRoute: typeof LabRRoute
+  LabSqlRoute: typeof LabSqlRoute
   LabVscodeRoute: typeof LabVscodeRoute
 }
 
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabRRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lab/sql': {
+      id: '/lab/sql'
+      path: '/lab/sql'
+      fullPath: '/lab/sql'
+      preLoaderRoute: typeof LabSqlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lab/vscode': {
       id: '/lab/vscode'
       path: '/lab/vscode'
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   LabNotebookRoute: LabNotebookRoute,
   LabPythonRoute: LabPythonRoute,
   LabRRoute: LabRRoute,
+  LabSqlRoute: LabSqlRoute,
   LabVscodeRoute: LabVscodeRoute,
 }
 export const routeTree = rootRouteImport

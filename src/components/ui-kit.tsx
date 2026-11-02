@@ -129,6 +129,7 @@ const userNav = [
   { to: "/lab/notebook", label: "Notebook", icon: "📓" },
   { to: "/lab/python", label: "Python Lab", icon: "Py" },
   { to: "/lab/r", label: "R Lab", icon: "R" },
+  { to: "/lab/sql", label: "SQL Lab", icon: "SQL" },
   { to: "/lab/vscode", label: "VS Code", icon: "{}" },
 ] as const;
 

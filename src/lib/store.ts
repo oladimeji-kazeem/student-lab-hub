@@ -48,7 +48,7 @@ import {
 export type Role = "user" | "admin";
 export type UserStatus = "pending" | "active" | "suspended";
 export type PaymentStatus = "pending" | "approved" | "rejected";
-export type Env = "python" | "r" | "vscode" | "notebook";
+export type Env = "python" | "r" | "vscode" | "notebook" | "sql";
 export type AccountType = "student" | "lecturer" | "non-academic";
 
 export interface User {
@@ -936,8 +936,11 @@ export const hasAccess = (u: User | null, env?: Env) =>
   new Date(u.accessUntil) > new Date() &&
   (!env ||
     u.envs.includes(env) ||
-    (env === "notebook" &&
-      (u.envs.includes("python") || u.envs.includes("r") || u.envs.includes("notebook"))));
+    ((env === "notebook" || env === "sql") &&
+      (u.envs.includes("python") ||
+        u.envs.includes("r") ||
+        u.envs.includes("sql") ||
+        u.envs.includes("notebook"))));
 
 export const actions = {
   login(email: string, password: string) {

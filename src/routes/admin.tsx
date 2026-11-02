@@ -63,7 +63,7 @@ const tabs = [
   "Settings",
 ] as const;
 
-const ENVS: Env[] = ["python", "r", "vscode", "notebook"];
+const ENVS: Env[] = ["python", "r", "vscode", "notebook", "sql"];
 
 function Admin() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
